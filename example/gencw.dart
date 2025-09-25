@@ -1,71 +1,44 @@
-/// A command-line application that generates and solves "arithmetic square" puzzles.
-///
-/// An arithmetic square is a grid of numbers where each row and column forms
-/// a valid mathematical equation. This program randomly generates the operators
-/// and a few initial numbers (clues), then models the puzzle as a
-/// Constraint Satisfaction Problem (CSP) and uses a generic CSP solver to find
-/// a valid solution for the remaining empty cells.
-///
-/// This version is modified to demonstrate solving each puzzle using both the
-/// "old way" (manual CspProblem) and the "new way" (Problem builder).
-///
-/// Usage: dart gencw.dart [options]
-///
-/// Options:
-///   --size=<N>        Sets the grid size to N x N (default: 3).
-///   --range=<min-max> Sets the range of numbers for cells (default: 1-20).
-///   --ops=<op1,op2>   Specifies allowed operators (+,-,*,/) (default: all).
-///   --clues=<N>       Sets the number of initial clues (default: auto).
-///   verbose           Enables detailed logging of the generation process.
-
 import 'dart:io';
 import 'dart:math';
 import 'package:dart_csp/dart_csp.dart';
+import 'dart:async';
 
-// ------------------- Configuration & Argument Parsing -------------------
+// --------------------------------------------------------------------------
+// CONFIGURATION & ARGUMENT PARSING
+// --------------------------------------------------------------------------
 
-/// A data class to hold the configuration settings for puzzle generation.
 class PuzzleConfig {
-  /// The size of the N x N grid.
-  int gridN;
-
-  /// The minimum possible value for a number in a cell.
   int minN;
-
-  /// The maximum possible value for a number in a cell.
   int maxN;
-
-  /// The list of mathematical operators allowed in the puzzle.
   List<String> ops;
-
-  /// The maximum number of attempts to generate a solvable puzzle layout.
-  int maxAttempts;
-
-  /// The desired number of pre-filled cells (clues) in the puzzle.
+  int targetEdges;
   int numClues;
-
-  /// A flag to enable or disable verbose logging.
+  bool noDups;
   bool verbose;
+  int timeoutSeconds;
 
   PuzzleConfig({
-    this.gridN = 3,
     this.minN = 1,
-    this.maxN = 20,
+    this.maxN = 9,
     this.ops = const ['+', '−', '×', '÷'],
-    this.maxAttempts = 250,
+    this.targetEdges = 8,
     this.numClues = 0,
+    this.noDups = false,
     this.verbose = false,
+    this.timeoutSeconds = 30, // Default to 30 seconds
   });
 }
 
-/// Parses command-line arguments to create a [PuzzleConfig] object.
 PuzzleConfig parseArgs(List<String> args) {
   final config = PuzzleConfig();
-  bool cluesManuallySet = false;
 
   for (final arg in args) {
     if (arg == 'verbose') {
       config.verbose = true;
+      continue;
+    }
+    if (arg == '--nodups') {
+      config.noDups = true;
       continue;
     }
     if (arg.startsWith('--')) {
@@ -75,12 +48,6 @@ PuzzleConfig parseArgs(List<String> args) {
       final value = parts[1];
 
       switch (key) {
-        case 'size':
-          final size = int.tryParse(value);
-          if (size != null && size >= 3) {
-            config.gridN = size;
-          }
-          break;
         case 'range':
           final rangeParts = value.split('-');
           if (rangeParts.length == 2) {
@@ -105,286 +72,510 @@ PuzzleConfig parseArgs(List<String> args) {
             config.ops = userOps;
           }
           break;
+        case 'edges':
+          final edges = int.tryParse(value);
+          if (edges != null && edges > 0) {
+            config.targetEdges = edges;
+          }
+          break;
         case 'clues':
           final clues = int.tryParse(value);
           if (clues != null && clues >= 0) {
             config.numClues = clues;
-            cluesManuallySet = true;
+          }
+          break;
+        case 'timeout':
+          final timeout = int.tryParse(value);
+          if (timeout != null && timeout > 0) {
+            config.timeoutSeconds = timeout;
           }
           break;
       }
     }
   }
-
-  if (config.gridN > 3 && !cluesManuallySet) {
-    config.numClues = (config.gridN / 2).floor();
-  }
   return config;
 }
 
-// ------------------- Main Application Logic -------------------
+// --------------------------------------------------------------------------
+// STEP 1: PATTERN GENERATION
+// --------------------------------------------------------------------------
 
-/// The main entry point of the application.
-void main(List<String> args) async {
-  final config = parseArgs(args);
-  final puzzleGenerator = PuzzleGenerator(config);
-  await puzzleGenerator.generate();
+class GridPatternGenerator {
+  final int width;
+  final int height;
+  final int targetEdges;
+  late List<List<String>> grid;
+  final Random random = Random();
+  int edgeCount = 0;
+  late Point<int> mazeStart;
+  late int firstDirection;
+  final List<Point<int>> directions = [
+    Point(0, -1),
+    Point(1, 0),
+    Point(0, 1),
+    Point(-1, 0)
+  ];
+
+  GridPatternGenerator({
+    this.width = 30,
+    this.height = 25,
+    required this.targetEdges,
+  }) {
+    initializeGrid();
+    mazeStart = Point(width ~/ 2, height ~/ 2);
+    firstDirection = random.nextInt(4);
+    if (isValidPosition(mazeStart.x, mazeStart.y)) {
+      grid[mazeStart.y][mazeStart.x] = '█';
+    }
+  }
+
+  void initializeGrid() {
+    grid = List.generate(height, (_) => List.generate(width, (_) => ' '));
+  }
+
+  bool isValidPosition(int x, int y) {
+    return x >= 2 && x < width - 2 && y >= 2 && y < height - 2;
+  }
+
+  int countSquaresBehind(Point<int> pos, int direction) {
+    Point<int> oppositeDir = directions[(direction + 2) % 4];
+    int count = 0;
+    for (int step = 1; step <= 4; step++) {
+      int x = pos.x + (oppositeDir.x * step);
+      int y = pos.y + (oppositeDir.y * step);
+      if (!isValidPosition(x, y) || grid[y][x] != '█') break;
+      count++;
+    }
+    return count;
+  }
+
+  bool canWalk4Steps(Point<int> pos, int direction) {
+    if (countSquaresBehind(pos, direction) >= 4) return false;
+    Point<int> dir = directions[direction];
+    for (int step = 1; step <= 4; step++) {
+      int x = pos.x + (dir.x * step);
+      int y = pos.y + (dir.y * step);
+      if (!isValidPosition(x, y)) return false;
+      if (step < 4 && grid[y][x] == '█') return false;
+    }
+    return true;
+  }
+
+  Point<int> walk4Steps(Point<int> pos, int direction) {
+    Point<int> dir = directions[direction];
+    for (int step = 1; step <= 4; step++) {
+      int x = pos.x + (dir.x * step);
+      int y = pos.y + (dir.y * step);
+      if (isValidPosition(x, y)) grid[y][x] = '█';
+    }
+    edgeCount++;
+    return Point(pos.x + (dir.x * 4), pos.y + (dir.y * 4));
+  }
+
+  void runMazeWalker() {
+    Point<int> currentPos = mazeStart;
+    int currentDirection = firstDirection;
+
+    for (int moves = 0; moves < 15 && edgeCount < targetEdges; moves++) {
+      if (canWalk4Steps(currentPos, currentDirection)) {
+        currentPos = walk4Steps(currentPos, currentDirection);
+        int decision = random.nextInt(100);
+        List<int> turnOptions = [(currentDirection + 1) % 4, (currentDirection + 3) % 4]
+          ..shuffle(random);
+
+        if (decision < 40) {
+          Point<int> dir = directions[currentDirection];
+          Point<int> backPos =
+              Point(currentPos.x - (dir.x * 2), currentPos.y - (dir.y * 2));
+          bool foundTurn = false;
+          for (int newDir in turnOptions) {
+            if (canWalk4Steps(backPos, newDir)) {
+              currentPos = backPos;
+              currentDirection = newDir;
+              foundTurn = true;
+              break;
+            }
+          }
+          if (!foundTurn) break;
+        } else {
+          bool foundTurn = false;
+          for (int newDir in turnOptions) {
+            if (canWalk4Steps(currentPos, newDir)) {
+              currentDirection = newDir;
+              foundTurn = true;
+              break;
+            }
+          }
+          if (!foundTurn) break;
+        }
+      } else {
+        List<int> turnOptions = [(currentDirection + 1) % 4, (currentDirection + 3) % 4]
+          ..shuffle(random);
+        bool foundTurn = false;
+        for (int newDir in turnOptions) {
+          if (canWalk4Steps(currentPos, newDir)) {
+            currentDirection = newDir;
+            foundTurn = true;
+            break;
+          }
+        }
+        if (!foundTurn) break;
+      }
+    }
+  }
+
+  List<List<String>> generatePattern() {
+    for (int walker = 0; walker < 4 && edgeCount < targetEdges; walker++) {
+      int oldEdgeCount = edgeCount;
+      runMazeWalker();
+      if (edgeCount == oldEdgeCount) break;
+    }
+    return grid;
+  }
 }
 
-/// The main class responsible for the puzzle generation and solving process.
-class PuzzleGenerator {
+// --------------------------------------------------------------------------
+// STEP 2: PUZZLE ANALYSIS & VALIDATION
+// --------------------------------------------------------------------------
+
+class Equation {
+  final List<Point<int>> numberCells;
+  final Point<int> operatorCell;
+  final String operator;
+  Equation(this.numberCells, this.operatorCell, this.operator);
+  List<String> get variableNames =>
+      numberCells.map((p) => 'C_${p.y}_${p.x}').toList();
+  Set<Point<int>> get allCells {
+    final op = operatorCell;
+    final n1 = numberCells[0];
+    final n2 = numberCells[1];
+    final n3 = numberCells[2];
+    return {
+      n1,
+      op,
+      Point((op.x + n2.x) ~/ 2, (op.y + n2.y) ~/ 2),
+      n2,
+      Point((n2.x + n3.x) ~/ 2, (n2.y + n3.y) ~/ 2),
+      n3
+    };
+  }
+
+  @override
+  String toString() =>
+      '${variableNames[0]} $operator ${variableNames[1]} == ${variableNames[2]}';
+}
+
+class PuzzleParser {
+  final List<List<String>> grid;
   final PuzzleConfig config;
-  final Random _random = Random();
+  final Random random = Random();
+  final List<Equation> equations = [];
+  final Set<Point<int>> numberCellLocations = {};
 
-  PuzzleGenerator(this.config);
+  PuzzleParser(this.grid, this.config) {
+    _findEquations();
+  }
 
-  void log(String message) {
-    if (config.verbose) {
-      print(message);
+  void _findEquations() {
+    int height = grid.length;
+    int width = grid[0].length;
+    for (int r = 0; r < height; r++) {
+      for (int c = 0; c < width - 4; c++) {
+        if (List.generate(5, (i) => grid[r][c + i])
+            .every((cell) => cell == '█')) {
+          final numberCells = [Point(c, r), Point(c + 2, r), Point(c + 4, r)];
+          final operatorCell = Point(c + 1, r);
+          final eq = Equation(numberCells, operatorCell,
+              config.ops[random.nextInt(config.ops.length)]);
+          equations.add(eq);
+          numberCellLocations.addAll(numberCells);
+        }
+      }
+    }
+    for (int r = 0; r < height - 4; r++) {
+      for (int c = 0; c < width; c++) {
+        if (List.generate(5, (i) => grid[r + i][c])
+            .every((cell) => cell == '█')) {
+          final numberCells = [Point(c, r), Point(c, r + 2), Point(c, r + 4)];
+          final operatorCell = Point(c, r + 1);
+          final eq = Equation(numberCells, operatorCell,
+              config.ops[random.nextInt(config.ops.length)]);
+          equations.add(eq);
+          numberCellLocations.addAll(numberCells);
+        }
+      }
     }
   }
 
-  // ------------------- Utility Methods -------------------
+  bool isPatternValid() {
+    if (equations.isEmpty) return false;
+    int totalBlockCells = 0;
+    for (var row in grid) {
+      for (var cell in row) {
+        if (cell == '█') totalBlockCells++;
+      }
+    }
+    final cellsInEquations = <Point<int>>{};
+    for (final eq in equations) {
+      cellsInEquations.addAll(eq.allCells);
+    }
+    return totalBlockCells == cellsInEquations.length;
+  }
+}
 
-  int randInt(int a, int b) => a + _random.nextInt(b - a + 1);
-  T randChoice<T>(List<T> arr) => arr[_random.nextInt(arr.length)];
-  String id(int r, int c) => 'r${r}c${c}';
-  String opId(int? r, int? c, String type, [int index = 0]) {
-    if (type == 'row') return 'op_r${r}_i$index';
-    if (type == 'col') return 'op_c${c}_i$index';
-    return '';
+// --------------------------------------------------------------------------
+// STEP 3 & 6: ASCII RENDERING
+// --------------------------------------------------------------------------
+
+class AsciiRenderer {
+  final PuzzleParser puzzle;
+  final PuzzleConfig config;
+  final Map<String, dynamic>? solution;
+  late final int cellWidth;
+
+  AsciiRenderer(this.puzzle, this.config, {this.solution}) {
+    cellWidth = config.maxN.toString().length + 2;
   }
 
-  int? evaluate(List<dynamic> operands, List<String> ops) {
-    if (operands.any((op) => op == null) || operands.length != ops.length + 1) {
-      return null;
+  String render() {
+    if (puzzle.numberCellLocations.isEmpty) return "No valid equations found.";
+    final equationCells = <Point<int>, String>{};
+    for (final eq in puzzle.equations) {
+      final mid1 = Point((eq.operatorCell.x + eq.numberCells[1].x) ~/ 2,
+          (eq.operatorCell.y + eq.numberCells[1].y) ~/ 2);
+      final mid2 = Point((eq.numberCells[1].x + eq.numberCells[2].x) ~/ 2,
+          (eq.numberCells[1].y + eq.numberCells[2].y) ~/ 2);
+      equationCells[mid1] = eq.operator;
+      equationCells[mid2] = '=';
     }
-    int currentVal = operands[0] as int;
-    for (int i = 0; i < ops.length; i++) {
-      final op = ops[i];
-      final nextVal = operands[i + 1] as int;
-      switch (op) {
+    final allDrawableCells = {
+      ...puzzle.numberCellLocations,
+      ...equationCells.keys
+    };
+    final minX = allDrawableCells.map((p) => p.x).reduce(min);
+    final maxX = allDrawableCells.map((p) => p.x).reduce(max);
+    final minY = allDrawableCells.map((p) => p.y).reduce(min);
+    final maxY = allDrawableCells.map((p) => p.y).reduce(max);
+    final canvasWidth = (maxX - minX + 1) * (cellWidth + 1) + 1;
+    final canvasHeight = (maxY - minY + 1) * 2 + 1;
+    var canvas = List.generate(canvasHeight, (_) => List.filled(canvasWidth, ' '));
+
+    for (final point in allDrawableCells) {
+      _drawBox(canvas, point.x - minX, point.y - minY);
+    }
+    for (final point in allDrawableCells) {
+      String content = '';
+      if (equationCells.containsKey(point)) {
+        content = equationCells[point]!;
+      } else if (puzzle.numberCellLocations.contains(point)) {
+        final varName = 'C_${point.y}_${point.x}';
+        content = solution?[varName]?.toString() ?? '';
+      }
+      _fillText(canvas, point.x - minX, point.y - minY, content);
+    }
+    return canvas.map((row) => row.join()).join('\n');
+  }
+
+  void _drawBox(List<List<String>> canvas, int x, int y) {
+    int cx = x * (cellWidth + 1);
+    int cy = y * 2;
+    canvas[cy][cx] = '+';
+    canvas[cy][cx + cellWidth] = '+';
+    canvas[cy + 2][cx] = '+';
+    canvas[cy + 2][cx + cellWidth] = '+';
+    for (int i = 1; i < cellWidth; i++) {
+      canvas[cy][cx + i] = '-';
+      canvas[cy + 2][cx + i] = '-';
+    }
+    canvas[cy + 1][cx] = '|';
+    canvas[cy + 1][cx + cellWidth] = '|';
+  }
+
+  void _fillText(List<List<String>> canvas, int x, int y, String text) {
+    int cx = x * (cellWidth + 1) + (cellWidth ~/ 2) - (text.length - 1) ~/ 2;
+    int cy = y * 2 + 1;
+    for (int i = 0; i < text.length; i++) {
+      if (cx + i < canvas[cy].length) {
+        canvas[cy][cx + i] = text[i];
+      }
+    }
+  }
+}
+
+// --------------------------------------------------------------------------
+// MAIN ORCHESTRATOR
+// --------------------------------------------------------------------------
+void main(List<String> args) async {
+  final config = parseArgs(args);
+  print('--- MATH CROSSWORD PUZZLE GENERATOR & SOLVER ---');
+  print(
+      'Config: Range=${config.minN}-${config.maxN}, Ops=${config.ops}, Edges=${config.targetEdges}, Clues=${config.numClues}, NoDups=${config.noDups}, Timeout=${config.timeoutSeconds}s');
+
+  dynamic solution;
+  PuzzleParser? successfulPuzzle;
+  const maxAttempts = 100;
+
+  for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+    print('\n' + ('-' * 60));
+    print('--- ATTEMPT $attempt/$maxAttempts ---');
+
+    // STEP 1: Generate a valid pattern
+    print("[1] Generating pattern...");
+    PuzzleParser puzzle;
+    int patternAttempt = 0;
+    do {
+      patternAttempt++;
+      final generator = GridPatternGenerator(targetEdges: config.targetEdges);
+      final rawGrid = generator.generatePattern();
+      puzzle = PuzzleParser(rawGrid, config);
+    } while (!puzzle.isPatternValid() && patternAttempt < 100);
+
+    if (!puzzle.isPatternValid()) {
+      print("  -> FAILED to generate a valid puzzle pattern. Retrying...");
+      continue; // Restart the main loop
+    }
+
+    final allVarNames =
+        puzzle.numberCellLocations.map((p) => 'C_${p.y}_${p.x}').toList();
+    print(
+        "  -> Pattern found with ${puzzle.equations.length} equations and ${allVarNames.length} cells.");
+
+    // STEP 2: Generate intelligent clues
+    print("[2] Generating ${config.numClues} 'Power Position' clues...");
+    final clues = <String, int>{};
+    final domain = List<int>.generate(config.maxN - config.minN + 1, (i) => i + config.minN);
+
+    final variableCounts = <String, int>{};
+    for (final varName in allVarNames) {
+      variableCounts[varName] = 0;
+    }
+    for (final eq in puzzle.equations) {
+      for (final varName in eq.variableNames) {
+        variableCounts[varName] = (variableCounts[varName] ?? 0) + 1;
+      }
+    }
+
+    final List<String> candidates = [...allVarNames];
+    final clueVars = <String>[];
+    final disqualifiedEquations = <Equation>{};
+
+    for (int i = 0; i < config.numClues && candidates.isNotEmpty; i++) {
+      candidates.sort((a, b) => variableCounts[b]!.compareTo(variableCounts[a]!));
+      if (candidates.isEmpty) break;
+      final bestCandidate = candidates.first;
+
+      final chosenEquation = puzzle.equations.firstWhere(
+        (eq) => eq.variableNames.contains(bestCandidate) && !disqualifiedEquations.contains(eq),
+        orElse: () => puzzle.equations.first,
+      );
+
+      String clueVariable;
+      switch (chosenEquation.operator) {
         case '+':
-          currentVal += nextVal;
+        case '×':
+          clueVariable = chosenEquation.variableNames[2];
           break;
         case '−':
-          currentVal -= nextVal;
-          break;
-        case '×':
-          currentVal *= nextVal;
-          break;
         case '÷':
-          if (nextVal == 0 || currentVal % nextVal != 0) return null;
-          currentVal ~/= nextVal;
+          clueVariable = chosenEquation.variableNames[0];
           break;
         default:
-          return null;
+          clueVariable = bestCandidate;
       }
-    }
-    return currentVal;
-  }
-
-  // ------------------- CSP Modeling and Grid Display -------------------
-
-  /// **[OLD WAY]** Models the puzzle by manually constructing a [CspProblem].
-  CspProblem buildPuzzleConstraintsOldWay(
-      Map<String, List<List<String>>> ops, Map<String, int> clues) {
-    final variables = <String, List<dynamic>>{};
-    final naryConstraints = <NaryConstraint>[];
-    final fullDomain = List<int>.generate(
-        config.maxN - config.minN + 1, (i) => i + config.minN);
-
-    for (int r = 0; r < config.gridN; r++) {
-      for (int c = 0; c < config.gridN; c++) {
-        final cellId = id(r, c);
-        variables[cellId] =
-            clues.containsKey(cellId) ? [clues[cellId]!] : fullDomain;
-      }
+      clueVars.add(clueVariable);
+      disqualifiedEquations.add(chosenEquation);
+      candidates.removeWhere((v) => chosenEquation.variableNames.contains(v));
     }
 
-    NaryPredicate createPredicate(List<String> varNames, List<String> opList) {
-      return (assign) {
-        final values = varNames.map((v) => assign[v]).toList();
-        final operands = values.sublist(0, config.gridN - 1);
-        final result = values.last;
-        if (operands.any((op) => op == null) || result == null) return false;
-        return evaluate(operands, opList) == result;
-      };
+    final usedClueValues = <int>{};
+    for (final clueVar in clueVars.toSet()) {
+      int clueValue;
+      do {
+        clueValue = domain[Random().nextInt(domain.length)];
+      } while (config.noDups && usedClueValues.contains(clueValue));
+      clues[clueVar] = clueValue;
+      if (config.noDups) usedClueValues.add(clueValue);
     }
+    print("  -> Clues placed: $clues");
 
-    for (int r = 0; r < config.gridN; r++) {
-      final rowVars = List<String>.generate(config.gridN, (c) => id(r, c));
-      naryConstraints.add(NaryConstraint(
-          vars: rowVars, predicate: createPredicate(rowVars, ops['rows']![r])));
-    }
-
-    for (int c = 0; c < config.gridN; c++) {
-      final colVars = List<String>.generate(config.gridN, (r) => id(r, c));
-      naryConstraints.add(NaryConstraint(
-          vars: colVars, predicate: createPredicate(colVars, ops['cols']![c])));
-    }
-
-    return CspProblem(variables: variables, naryConstraints: naryConstraints);
-  }
-
-  /// **[NEW WAY]** Models the puzzle using the [Problem] builder class.
-  Problem buildPuzzleConstraintsNewWay(
-      Map<String, List<List<String>>> ops, Map<String, int> clues) {
+    // STEP 3: Formulate and solve the CSP with a timeout
+    print("[3] Solving puzzle (timeout in ${config.timeoutSeconds}s)...");
     final p = Problem();
-    final fullDomain = List<int>.generate(
-        config.maxN - config.minN + 1, (i) => i + config.minN);
-
-    for (int r = 0; r < config.gridN; r++) {
-      for (int c = 0; c < config.gridN; c++) {
-        final cellId = id(r, c);
-        if (clues.containsKey(cellId)) {
-          p.addVariable(cellId, [clues[cellId]!]);
-        } else {
-          p.addVariable(cellId, fullDomain);
-        }
-      }
+    final fullDomain = List<int>.generate(config.maxN - config.minN + 1, (i) => i + config.minN);
+    if (config.noDups) {
+      fullDomain.removeWhere((val) => clues.values.contains(val));
     }
-
-    NaryPredicate createPredicate(List<String> varNames, List<String> opList) {
-      return (assign) {
-        final values = varNames.map((v) => assign[v]).toList();
-        final operands = values.sublist(0, config.gridN - 1);
-        final result = values.last;
-        if (operands.any((op) => op == null) || result == null) return false;
-        return evaluate(operands, opList) == result;
-      };
-    }
-
-    for (int r = 0; r < config.gridN; r++) {
-      final rowVars = List<String>.generate(config.gridN, (c) => id(r, c));
-      p.addConstraint(rowVars, createPredicate(rowVars, ops['rows']![r]));
-    }
-
-    for (int c = 0; c < config.gridN; c++) {
-      final colVars = List<String>.generate(config.gridN, (r) => id(r, c));
-      p.addConstraint(colVars, createPredicate(colVars, ops['cols']![c]));
-    }
-    return p;
-  }
-
-  String asciiGrid(
-      Map<String, dynamic> solution, Map<String, String> ops, int n) {
-    final buffer = StringBuffer();
-    final hLine = '+' + ('-' * (n * 4 + (n - 1) * 3)) + '+\n';
-    buffer.write(hLine);
-    for (int r = 0; r < n; r++) {
-      buffer.write('|');
-      for (int c = 0; c < n; c++) {
-        final valStr = solution[id(r, c)]?.toString() ?? '?';
-        buffer.write(valStr.padLeft(4, ' '));
-        if (c < n - 2) {
-          buffer.write(' ${ops[opId(r, null, 'row', c)]} ');
-        } else if (c == n - 2) {
-          buffer.write(' = ');
-        }
-      }
-      buffer.write(' |\n');
-      if (r < n - 1) {
-        buffer.write('|');
-        for (int c = 0; c < n; c++) {
-          final op = (r < n - 2) ? ops[opId(null, c, 'col', r)] : '=';
-          buffer.write('  $op ');
-          if (c < n - 1) buffer.write('   ');
-        }
-        buffer.write(' |\n');
-      }
-    }
-    buffer.write(hLine);
-    return buffer.toString();
-  }
-
-  // ------------------- Main Generation Loop -------------------
-
-  Future<void> generate() async {
-    print('\n--- Generating ${config.gridN}x${config.gridN} Puzzle ---');
-    print(
-        '(Range: ${config.minN}-${config.maxN}, Ops: [${config.ops.join(', ')}])');
-    if (config.numClues > 0) {
-      print('(Seeding with up to ${config.numClues} random clues)');
-    }
-
-    for (int attempt = 1; attempt <= config.maxAttempts; attempt++) {
-      print('\n--- Attempt $attempt/${config.maxAttempts} ---');
-
-      // Step 1: Randomly generate operators.
-      final opLayout = {'rows': <List<String>>[], 'cols': <List<String>>[]};
-      final opDetails = <String, String>{};
-      for (int r = 0; r < config.gridN; r++) {
-        final ops =
-            List.generate(config.gridN - 2, (_) => randChoice(config.ops));
-        opLayout['rows']!.add(ops);
-        ops.asMap().forEach((i, op) => opDetails[opId(r, null, 'row', i)] = op);
-      }
-      for (int c = 0; c < config.gridN; c++) {
-        final ops =
-            List.generate(config.gridN - 2, (_) => randChoice(config.ops));
-        opLayout['cols']!.add(ops);
-        ops.asMap().forEach((i, op) => opDetails[opId(null, c, 'col', i)] = op);
-      }
-
-      // Step 2: Determine forbidden clue locations (e.g., divisors).
-      final forbiddenClueCells = <String>{};
-      opLayout['rows']!.asMap().forEach((r, rowOps) {
-        rowOps.asMap().forEach((i, op) {
-          if (op == '÷') forbiddenClueCells.add(id(r, i + 1));
-        });
-      });
-      opLayout['cols']!.asMap().forEach((c, colOps) {
-        colOps.asMap().forEach((i, op) {
-          if (op == '÷') forbiddenClueCells.add(id(i + 1, c));
-        });
-      });
-      log('Forbidden clue locations: ${forbiddenClueCells.join(', ')}');
-
-      // Step 3: Randomly generate clues in valid locations.
-      final clues = <String, int>{};
-      final allCells = [
-        for (int r = 0; r < config.gridN; r++)
-          for (int c = 0; c < config.gridN; c++) id(r, c)
-      ];
-      final validClueCells = allCells
-          .where((cellId) => !forbiddenClueCells.contains(cellId))
-          .toList()
-        ..shuffle(_random);
-      final numCluesToPlace = min(config.numClues, validClueCells.length);
-      for (int i = 0; i < numCluesToPlace; i++) {
-        clues[validClueCells[i]] = randInt(config.minN, config.maxN);
-      }
-
-      // Step 4: Display the generated puzzle skeleton.
-      print("Generated puzzle layout:");
-      print(asciiGrid(clues, opDetails, config.gridN));
-
-      // Step 5: Model and attempt to solve the puzzle using both methods.
-
-      // [Method 1: The Old Way]
-      print("[1] Solving with the OLD WAY (Manual CspProblem)...");
-      final oldWayProblem = buildPuzzleConstraintsOldWay(opLayout, clues);
-      final oldWaySolution = await CSP.solve(oldWayProblem);
-
-      // [Method 2: The New Way]
-      print("[2] Solving with the NEW WAY (Problem Builder)...");
-      final newWayProblemBuilder =
-          buildPuzzleConstraintsNewWay(opLayout, clues);
-      final newWaySolution = await newWayProblemBuilder.getSolution();
-
-      // Step 6: Report the outcome.
-      // The solution from both methods should be identical.
-      if (oldWaySolution != 'FAILURE') {
-        print(
-            "\n✅ SUCCESS! Both methods found a solution for the layout above:");
-        print(asciiGrid(oldWaySolution, opDetails, config.gridN));
-        return; // Exit successfully.
+    for (final varName in allVarNames) {
+      if (clues.containsKey(varName)) {
+        p.addVariable(varName, [clues[varName]!]);
       } else {
-        print("❌ Both methods failed to solve. Generating new layout.");
+        p.addVariable(varName, fullDomain);
       }
     }
+    for (final eq in puzzle.equations) {
+      p.addConstraint(eq.variableNames, (assignment) {
+        final a = assignment[eq.variableNames[0]];
+        final b = assignment[eq.variableNames[1]];
+        final c = assignment[eq.variableNames[2]];
+        if (a == null || b == null || c == null) return false;
+        switch (eq.operator) {
+          case '+':
+            return a + b == c;
+          case '−':
+            return a - b == c;
+          case '×':
+            return a * b == c;
+          case '÷':
+            return b != 0 && a % b == 0 && a ~/ b == c;
+          default:
+            return false;
+        }
+      });
+    }
+    if (config.noDups) {
+      p.addAllDifferent(allVarNames);
+    }
+
+    final stopwatch = Stopwatch()..start();
+    try {
+      final potentialSolution = await p
+          .getSolution()
+          .timeout(Duration(seconds: config.timeoutSeconds));
+      stopwatch.stop();
+
+      if (potentialSolution != 'FAILURE') {
+        print(
+            "  -> SUCCESS! Solution found in ${stopwatch.elapsedMilliseconds}ms.");
+        solution = potentialSolution;
+        successfulPuzzle = puzzle;
+        print("\n[4] Puzzle to be solved:");
+        final emptyRenderer = AsciiRenderer(puzzle, config, solution: clues);
+        print(emptyRenderer.render());
+        break;
+      } else {
+        print(
+            "  -> UNSOLVABLE. The generated clues create a contradiction. Retrying...");
+      }
+    } on TimeoutException {
+      stopwatch.stop();
+      print(
+          "  -> TIMEOUT. The puzzle is too complex to solve in ${stopwatch.elapsedMilliseconds}ms. Retrying...");
+    }
+  }
+
+  print('\n' + ('=' * 60));
+  // STEP 4: Display the final result
+  if (solution != null &&
+      solution != 'FAILURE' &&
+      successfulPuzzle != null) {
+    print("--- FINAL SOLUTION ---");
+    final solvedRenderer =
+        AsciiRenderer(successfulPuzzle, config, solution: solution);
+    print(solvedRenderer.render());
+  } else {
     print(
-        '\n--- FAILED to find a solvable layout in ${config.maxAttempts} attempts. ---');
+        "--- FAILED to generate a solvable puzzle after $maxAttempts attempts. ---");
+    print(
+        "Consider increasing the timeout (--timeout), reducing the number range (--range), or allowing duplicates.");
   }
 }

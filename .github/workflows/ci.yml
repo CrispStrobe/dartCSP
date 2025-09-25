@@ -18,7 +18,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        dart-version: ['stable', 'beta', 'dev'] # Use channels for better coverage
+        dart-version: ['stable', 'beta', 'dev']
         
     steps:
       - name: Checkout code
@@ -45,7 +45,6 @@ jobs:
         run: dart test --reporter expanded
         
       - name: Check test coverage
-        # Only run coverage on the stable channel on ubuntu
         if: matrix.os == 'ubuntu-latest' && matrix.dart-version == 'stable'
         run: |
           dart pub global activate coverage
@@ -53,9 +52,9 @@ jobs:
         
       - name: Upload coverage reports
         if: matrix.os == 'ubuntu-latest' && matrix.dart-version == 'stable'
-        uses: codecov/codecov-action@v4 # <-- FIX: Upgraded to v4
+        uses: codecov/codecov-action@v4
         with:
-          token: ${{ secrets.CODECOV_TOKEN }} # Recommended for private repos
+          token: ${{ secrets.CODECOV_TOKEN }}
           file: ./coverage/lcov.info
           fail_ci_if_error: false
 
@@ -75,10 +74,6 @@ jobs:
       - name: Install dependencies
         run: dart pub get
 
-      # FIX: Add a step to automatically apply simple fixes
-      - name: Apply automated fixes
-        run: dart fix --apply
-
       - name: Install pana
         run: dart pub global activate pana
         
@@ -88,7 +83,6 @@ jobs:
       - name: Check pub publish warnings
         run: dart pub publish --dry-run
 
-  # The benchmark job remains the same, as it was correctly structured
   benchmark:
     name: Performance Benchmarks  
     runs-on: ubuntu-latest
@@ -121,7 +115,7 @@ jobs:
         
       - name: Upload documentation
         if: github.ref == 'refs/heads/main'
-        uses: actions/upload-artifact@v4 # <-- FIX: Upgraded to v4
+        uses: actions/upload-artifact@v4 
         with:
           name: documentation
           path: doc/api/
@@ -138,11 +132,9 @@ jobs:
           sdk: stable
       - run: dart pub get
       
-      # FIX: Use the correct command for security analysis
       - name: Run security audit
         run: dart pub outdated --mode=security
 
-  # The examples and release jobs remain the same
   examples:
     name: Validate Examples
     runs-on: ubuntu-latest

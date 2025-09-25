@@ -7,7 +7,7 @@ A powerful, general-purpose library for modeling and solving Constraint Satisfac
 
 This library offers **three intuitive ways** to define constraints: **string expressions** for natural syntax, a high-level **Problem builder** for fast development, and a manual **CspProblem class** for direct control over the underlying structure.
 
-> **Note**: This project is a port and enhancement of the excellent [csp.js](https://github.com/PrajitR/jusCSP) by Prajit Ramachandran, adapted for Dart's strong typing, async capabilities, and object-oriented structure. This also enables easy use with Flutter projects.
+> **Note**: This project is originally based on a port and enhancement of the excellent [csp.js](https://github.com/PrajitR/jusCSP) by Prajit Ramachandran, adapted for Dart's strong typing, async capabilities, and object-oriented structure. This also enables easy use with Flutter projects.
 
 ## What is a Constraint Satisfaction Problem?
 
@@ -53,7 +53,7 @@ This solver goes beyond brute-force search with the following implemented algori
 
 ### Developer Features
 - **Modular Architecture**: Clean separation of concerns across multiple focused modules
-- **Comprehensive Test Suite**: Full test coverage with 100+ test cases covering all functionality
+- **Comprehensive Test Suite**: Full test coverage with test cases covering all functionality
 - **Multiple APIs**: Choose between string constraints, builder pattern, or manual construction
 - **Fluent Builder API**: An intuitive Problem class to easily define your CSP
 - **Rich Examples**: Complete demo showcasing all constraint types and problem-solving techniques
@@ -440,7 +440,7 @@ dart test test/dart_csp_test.dart -n "String Constraints"
 
 ### Test Coverage
 
-The test suite includes 100+ test cases covering:
+The test suite includes test cases covering:
 
 - **Basic Problem Creation**: Variable addition, domain validation, constraint setup
 - **Binary Constraints**: Two-variable relationships and consistency
@@ -666,7 +666,7 @@ example/
 └── gencw.dart                    # Advanced arithmetic square puzzle generator
 
 test/
-└── dart_csp_test.dart           # Comprehensive test suite (100+ tests)
+└── dart_csp_test.dart           # Comprehensive test suite
 ```
 
 ## Running the Demo

@@ -455,9 +455,13 @@ extension MultipleSolutions on Problem {
     }
     return false;
   }
+
+  
   
   /// Get the first N solutions
   /// 
+  /// This stops the search after finding the specified number of solutions,
+  /// making it more efficient than finding all solutions if you only need a few.
   /// This is useful when you want to see a few examples without processing all solutions.
   ///
   /// Example:
@@ -470,12 +474,14 @@ extension MultipleSolutions on Problem {
   /// ```
   Future<List<Map<String, dynamic>>> getFirstNSolutions(int n) async {
     final solutions = <Map<String, dynamic>>[];
-    int count = 0;
+    if (n <= 0) return solutions; // Handle n=0 edge case
     await for (final solution in getSolutions()) {
       solutions.add(solution);
-      count++;
-      if (count >= n) break;
+      if (solutions.length >= n) {
+        break;
+      }
     }
     return solutions;
   }
+
 }

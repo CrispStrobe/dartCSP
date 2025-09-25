@@ -70,7 +70,7 @@ void main() {
       final solution = await p.getSolution();
       expect(solution, isA<Map>());
       final s = solution as Map<String, dynamic>;
-      
+
       final values = s.values.toSet();
       expect(values.length, equals(3)); // All different
     });
@@ -140,7 +140,7 @@ void main() {
       final solution = await p.getSolution();
       expect(solution, isA<Map>());
       final s = solution as Map<String, dynamic>;
-      
+
       final values = s.values.toSet();
       expect(values.length, equals(3)); // All different
     });
@@ -171,8 +171,8 @@ void main() {
     test('invalid constraint throws exception', () {
       final p = Problem();
       p.addVariable('A', [1, 2, 3]);
-      expect(() => p.addStringConstraint('A + B == 5'), 
-             throwsA(isA<ConstraintParseException>()));
+      expect(() => p.addStringConstraint('A + B == 5'),
+          throwsA(isA<ConstraintParseException>()));
     });
   });
 
@@ -180,7 +180,7 @@ void main() {
     test('magic square 3x3', () async {
       final p = Problem();
       final cells = ['A1', 'A2', 'A3', 'B1', 'B2', 'B3', 'C1', 'C2', 'C3'];
-      
+
       // --- OPTIMIZATION: Add a clue to prune the search space ---
       // For a 3x3 magic square, the center cell 'B2' must always be 5.
       p.addVariable('B2', [5]);
@@ -192,10 +192,10 @@ void main() {
           p.addVariable(cell, otherDomain);
         }
       }
-      
+
       // All different constraint remains the same
       p.addAllDifferent(cells);
-      
+
       // Built-in sum constraints
       // Rows
       p.addExactSum(['A1', 'A2', 'A3'], 15);
@@ -213,15 +213,15 @@ void main() {
 
       final solution = await p.getSolution();
       expect(solution, isA<Map>());
-      
+
       if (solution is Map) {
         final s = solution as Map<String, dynamic>;
-        
+
         // Check all different
         final values = s.values.toSet();
         expect(values.length, equals(9));
-        
-        // Check sums 
+
+        // Check sums
         expect(s['A1'] + s['A2'] + s['A3'], equals(15));
         expect(s['B1'] + s['B2'] + s['B3'], equals(15));
         expect(s['C1'] + s['C2'] + s['C3'], equals(15));
@@ -237,10 +237,10 @@ void main() {
       final p = Problem();
       final queens = ['Q1', 'Q2', 'Q3', 'Q4'];
       p.addVariables(queens, [1, 2, 3, 4]);
-      
+
       // No same column
       p.addAllDifferent(queens);
-      
+
       // No diagonal attacks
       for (int i = 0; i < 4; i++) {
         for (int j = i + 1; j < 4; j++) {
@@ -253,19 +253,19 @@ void main() {
 
       final solution = await p.getSolution();
       expect(solution, isA<Map>());
-      
+
       if (solution is Map) {
         final s = solution as Map<String, dynamic>;
-        
+
         // Check no same column
         final positions = s.values.toSet();
         expect(positions.length, equals(4));
-        
+
         // Check no diagonal attacks
         for (int i = 0; i < 4; i++) {
           for (int j = i + 1; j < 4; j++) {
-            final posI = s['Q${i+1}'];
-            final posJ = s['Q${j+1}'];
+            final posI = s['Q${i + 1}'];
+            final posJ = s['Q${j + 1}'];
             final rowDiff = (posI - posJ).abs();
             final colDiff = j - i;
             expect(rowDiff != colDiff, isTrue);
@@ -278,17 +278,16 @@ void main() {
       final p = Problem();
       const colors = ['red', 'green', 'blue'];
       const regions = ['A', 'B', 'C', 'D'];
-      
+
       p.addVariables(regions, colors);
-      
+
       // Adjacent regions different colors
-      p.addStringConstraints([
-        'A != B', 'A != C', 'B != C', 'B != D', 'C != D'
-      ]);
+      p.addStringConstraints(
+          ['A != B', 'A != C', 'B != C', 'B != D', 'C != D']);
 
       final solution = await p.getSolution();
       expect(solution, isA<Map>());
-      
+
       if (solution is Map) {
         final s = solution as Map<String, dynamic>;
         expect(s['A'] != s['B'], isTrue);
@@ -300,13 +299,125 @@ void main() {
     });
   });
 
+  group('Multiple Solutions', () {
+    // A problem with 3 solutions: {A:1, B:2}, {A:1, B:3}, {A:2, B:3}
+    Problem createMultiSolutionProblem() {
+      final p = Problem();
+      p.addVariables(['A', 'B'], [1, 2, 3]);
+      p.addStringConstraint('A < B');
+      return p;
+    }
+
+    // A problem with 1 solution: {A:1, B:1}
+    Problem createSingleSolutionProblem() {
+      final p = Problem();
+      p.addVariables(['A', 'B'], [1]);
+      p.addStringConstraint('A == B');
+      return p;
+    }
+
+    // A problem with 0 solutions
+    Problem createNoSolutionProblem() {
+      final p = Problem();
+      p.addVariables(['A'], [1]);
+      p.addStringConstraint('A != A');
+      return p;
+    }
+
+    test('getSolutions stream yields all solutions', () async {
+      final p = createMultiSolutionProblem();
+      final solutions = await p.getSolutions().toList();
+      expect(solutions, hasLength(3));
+      expect(
+          solutions,
+          containsAll([
+            {'A': 1, 'B': 2},
+            {'A': 1, 'B': 3},
+            {'A': 2, 'B': 3}
+          ]));
+    });
+
+    test('getAllSolutions returns a list of all solutions', () async {
+      final p = createMultiSolutionProblem();
+      final solutions = await p.getAllSolutions();
+      expect(solutions, isA<List>());
+      expect(solutions, hasLength(3));
+    });
+
+    test('countSolutions returns correct count', () async {
+      expect(await createMultiSolutionProblem().countSolutions(), equals(3));
+      expect(await createSingleSolutionProblem().countSolutions(), equals(1));
+      expect(await createNoSolutionProblem().countSolutions(), equals(0));
+    });
+
+    test('hasMultipleSolutions is correct', () async {
+      expect(await createMultiSolutionProblem().hasMultipleSolutions(), isTrue);
+      expect(
+          await createSingleSolutionProblem().hasMultipleSolutions(), isFalse);
+      expect(await createNoSolutionProblem().hasMultipleSolutions(), isFalse);
+    });
+
+    group('getFirstNSolutions', () {
+      test('gets N solutions when N < total', () async {
+        final p = createMultiSolutionProblem();
+        final solutions = await p.getFirstNSolutions(2);
+        expect(solutions, hasLength(2));
+      });
+
+      test('gets all solutions when N > total', () async {
+        final p = createMultiSolutionProblem();
+        final solutions = await p.getFirstNSolutions(5);
+        expect(solutions, hasLength(3));
+      });
+
+      test('gets all solutions when N == total', () async {
+        final p = createMultiSolutionProblem();
+        final solutions = await p.getFirstNSolutions(3);
+        expect(solutions, hasLength(3));
+      });
+
+      test('gets 0 solutions when N = 0', () async {
+        final p = createMultiSolutionProblem();
+        final solutions = await p.getFirstNSolutions(0);
+        expect(solutions, isEmpty);
+      });
+
+      test('gets 1 solution when N = 1', () async {
+        final p = createMultiSolutionProblem();
+        final solutions = await p.getFirstNSolutions(1);
+        expect(solutions, hasLength(1));
+      });
+
+      test('works with no solutions', () async {
+        final p = createNoSolutionProblem();
+        final solutions = await p.getFirstNSolutions(5);
+        expect(solutions, isEmpty);
+      });
+    });
+
+    test('solveAllProblems convenience function', () async {
+      final stream = solveAllProblems(
+        variables: {'A': [1, 2, 3], 'B': [1, 2, 3]},
+        constraints: ['A < B'],
+      );
+      final solutions = await stream.toList();
+      expect(solutions, hasLength(3));
+    });
+
+    test('countAllSolutions convenience function', () async {
+      final count = await countAllSolutions(
+        variables: {'A': [1, 2, 3], 'B': [1, 2, 3]},
+        constraints: ['A < B'],
+      );
+      expect(count, equals(3));
+    });
+  });
+
   group('Convenience Functions', () {
     test('solveAllDifferent', () async {
       final solution = await solveAllDifferent(
-        variables: ['A', 'B', 'C'],
-        domain: [1, 2, 3]
-      );
-      
+          variables: ['A', 'B', 'C'], domain: [1, 2, 3]);
+
       expect(solution, isA<Map>());
       final s = solution as Map<String, dynamic>;
       final values = s.values.toSet();
@@ -315,11 +426,8 @@ void main() {
 
     test('solveSumProblem', () async {
       final solution = await solveSumProblem(
-        variables: ['X', 'Y'],
-        domain: [1, 2, 3, 4, 5],
-        targetSum: 7
-      );
-      
+          variables: ['X', 'Y'], domain: [1, 2, 3, 4, 5], targetSum: 7);
+
       expect(solution, isA<Map>());
       final s = solution as Map<String, dynamic>;
       expect(s['X'] + s['Y'], equals(7));
@@ -327,10 +435,9 @@ void main() {
 
     test('solveProblem with string constraints', () async {
       final solution = await solveProblem(
-        variables: {'A': [1, 2, 3], 'B': [1, 2, 3]},
-        constraints: ['A != B', 'A + B >= 4']
-      );
-      
+          variables: {'A': [1, 2, 3], 'B': [1, 2, 3]},
+          constraints: ['A != B', 'A + B >= 4']);
+
       expect(solution, isA<Map>());
       final s = solution as Map<String, dynamic>;
       expect(s['A'] != s['B'], isTrue);
@@ -351,11 +458,7 @@ void main() {
     test('over-constrained problem', () async {
       final p = Problem();
       p.addVariables(['A', 'B'], [1, 2]);
-      p.addStringConstraints([
-        'A != B',
-        'A + B == 2',
-        'A > B'
-      ]);
+      p.addStringConstraints(['A != B', 'A + B == 2', 'A > B']);
 
       final result = await p.getSolution();
       expect(result, equals('FAILURE'));
@@ -367,7 +470,7 @@ void main() {
       final p1 = Problem();
       p1.addVariables(['A', 'B'], [1, 2, 3]);
       p1.addStringConstraint('A != B');
-      
+
       final p2 = p1.copy();
       expect(p2.variableCount, equals(p1.variableCount));
       expect(p2.constraintCount, equals(p1.constraintCount));
@@ -377,10 +480,10 @@ void main() {
       final p = Problem();
       p.addVariables(['A', 'B'], [1, 2, 3]);
       p.addStringConstraint('A != B');
-      
+
       expect(p.variableCount, greaterThan(0));
       expect(p.constraintCount, greaterThan(0));
-      
+
       p.clear();
       expect(p.variableCount, equals(0));
       expect(p.constraintCount, equals(0));
@@ -392,7 +495,7 @@ void main() {
       // Add a variable with no constraints (isolated variable test)
       p.addVariable('Isolated', [1, 2, 3]);
       p.addStringConstraint('A != 2'); // This creates a constraint only on A
-      
+
       final issues = p.validate();
       expect(issues.length, greaterThan(0));
       expect(issues.any((issue) => issue.contains('isolated')), isTrue);
@@ -414,18 +517,13 @@ void main() {
     test('multiple constraints with same variables', () async {
       final p = Problem();
       p.addVariables(['X', 'Y', 'Z'], [1, 2, 3, 4, 5]);
-      p.addStringConstraints([
-        'X != Y',
-        'Y != Z',
-        'X + Y + Z == 10',
-        'X < Y',
-        'Y < Z'
-      ]);
+      p.addStringConstraints(
+          ['X != Y', 'Y != Z', 'X + Y + Z == 10', 'X < Y', 'Y < Z']);
 
       final solution = await p.getSolution();
       expect(solution, isA<Map>());
       final s = solution as Map<String, dynamic>;
-      
+
       expect(s['X'] != s['Y'], isTrue);
       expect(s['Y'] != s['Z'], isTrue);
       expect(s['X'] + s['Y'] + s['Z'], equals(10));
@@ -436,9 +534,9 @@ void main() {
     test('malformed constraint throws exception', () {
       final p = Problem();
       p.addVariable('A', [1, 2, 3]);
-      
-      expect(() => p.addStringConstraint('A +++ B'), 
-             throwsA(isA<ConstraintParseException>()));
+
+      expect(() => p.addStringConstraint('A +++ B'),
+          throwsA(isA<ConstraintParseException>()));
     });
   });
 }

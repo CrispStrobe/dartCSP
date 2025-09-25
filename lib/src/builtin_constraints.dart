@@ -70,7 +70,7 @@ NaryPredicate exactSum(num targetSum, {List<num>? multipliers}) {
 
     for (final value in assignment.values) {
       final multiplier = multipliers?[index] ?? 1;
-      sum += value * multiplier;
+      sum += (value as num) * multiplier;
       index++;
     }
 
@@ -88,7 +88,7 @@ NaryPredicate minSum(num minimumSum, {List<num>? multipliers}) {
 
     for (final value in assignment.values) {
       final multiplier = multipliers?[index] ?? 1;
-      sum += value * multiplier;
+      sum += (value as num) * multiplier;
       index++;
     }
 
@@ -106,7 +106,7 @@ NaryPredicate maxSum(num maximumSum, {List<num>? multipliers}) {
 
     for (final value in assignment.values) {
       final multiplier = multipliers?[index] ?? 1;
-      sum += value * multiplier;
+      sum += (value as num) * multiplier;
       index++;
     }
 
@@ -124,7 +124,7 @@ NaryPredicate sumInRange(num minSum, num maxSum, {List<num>? multipliers}) {
 
     for (final value in assignment.values) {
       final multiplier = multipliers?[index] ?? 1;
-      sum += value * multiplier;
+      sum += (value as num) * multiplier;
       index++;
     }
 
@@ -136,19 +136,22 @@ NaryPredicate sumInRange(num minSum, num maxSum, {List<num>? multipliers}) {
 BinaryPredicate exactSumBinary(num targetSum, {List<num>? multipliers}) {
   final m1 = multipliers?[0] ?? 1;
   final m2 = multipliers?[1] ?? 1;
-  return (dynamic a, dynamic b) => (a * m1 + b * m2) == targetSum;
+  return (dynamic a, dynamic b) =>
+      ((a as num) * m1 + (b as num) * m2) == targetSum;
 }
 
 BinaryPredicate minSumBinary(num minimumSum, {List<num>? multipliers}) {
   final m1 = multipliers?[0] ?? 1;
   final m2 = multipliers?[1] ?? 1;
-  return (dynamic a, dynamic b) => (a * m1 + b * m2) >= minimumSum;
+  return (dynamic a, dynamic b) =>
+      ((a as num) * m1 + (b as num) * m2) >= minimumSum;
 }
 
 BinaryPredicate maxSumBinary(num maximumSum, {List<num>? multipliers}) {
   final m1 = multipliers?[0] ?? 1;
   final m2 = multipliers?[1] ?? 1;
-  return (dynamic a, dynamic b) => (a * m1 + b * m2) <= maximumSum;
+  return (dynamic a, dynamic b) =>
+      ((a as num) * m1 + (b as num) * m2) <= maximumSum;
 }
 
 BinaryPredicate sumInRangeBinary(num minSum, num maxSum,
@@ -156,21 +159,21 @@ BinaryPredicate sumInRangeBinary(num minSum, num maxSum,
   final m1 = multipliers?[0] ?? 1;
   final m2 = multipliers?[1] ?? 1;
   return (dynamic a, dynamic b) {
-    final sum = a * m1 + b * m2;
+    final sum = (a as num) * m1 + (b as num) * m2;
     return sum >= minSum && sum <= maxSum;
   };
 }
 
 BinaryPredicate exactProductBinary(num targetProduct) {
-  return (dynamic a, dynamic b) => (a * b) == targetProduct;
+  return (dynamic a, dynamic b) => (a as num) * (b as num) == targetProduct;
 }
 
 BinaryPredicate minProductBinary(num minimumProduct) {
-  return (dynamic a, dynamic b) => (a * b) >= minimumProduct;
+  return (dynamic a, dynamic b) => (a as num) * (b as num) >= minimumProduct;
 }
 
 BinaryPredicate maxProductBinary(num maximumProduct) {
-  return (dynamic a, dynamic b) => (a * b) <= maximumProduct;
+  return (dynamic a, dynamic b) => (a as num) * (b as num) <= maximumProduct;
 }
 
 /// Creates a constraint ensuring variables multiply to an exact value
@@ -180,7 +183,7 @@ NaryPredicate exactProduct(num targetProduct) {
 
     num product = 1;
     for (final value in assignment.values) {
-      product *= value;
+      product *= (value as num);
     }
 
     return product == targetProduct;
@@ -194,7 +197,7 @@ NaryPredicate minProduct(num minimumProduct) {
 
     num product = 1;
     for (final value in assignment.values) {
-      product *= value;
+      product *= (value as num);
     }
 
     return product >= minimumProduct;
@@ -208,7 +211,7 @@ NaryPredicate maxProduct(num maximumProduct) {
 
     num product = 1;
     for (final value in assignment.values) {
-      product *= value;
+      product *= (value as num);
     }
 
     return product <= maximumProduct;
@@ -265,7 +268,7 @@ NaryPredicate ascendingInOrder(List<String> variableOrder) {
       final current = assignment[variableOrder[i]];
       final previous = assignment[variableOrder[i - 1]];
       if (current == null || previous == null) return true;
-      if (current < previous) {
+      if ((current as num) < (previous as num)) {
         return false;
       }
     }
@@ -280,7 +283,7 @@ NaryPredicate strictlyAscendingInOrder(List<String> variableOrder) {
       final current = assignment[variableOrder[i]];
       final previous = assignment[variableOrder[i - 1]];
       if (current == null || previous == null) return true;
-      if (current <= previous) {
+      if ((current as num) <= (previous as num)) {
         return false;
       }
     }
@@ -295,7 +298,7 @@ NaryPredicate descendingInOrder(List<String> variableOrder) {
       final current = assignment[variableOrder[i]];
       final previous = assignment[variableOrder[i - 1]];
       if (current == null || previous == null) return true;
-      if (current > previous) {
+      if ((current as num) > (previous as num)) {
         return false;
       }
     }
@@ -305,13 +308,13 @@ NaryPredicate descendingInOrder(List<String> variableOrder) {
 
 // Binary versions of ordering constraints for 2-variable optimization
 BinaryPredicate ascendingBinary() {
-  return (dynamic a, dynamic b) => a <= b;
+  return (dynamic a, dynamic b) => (a as num) <= (b as num);
 }
 
 BinaryPredicate strictlyAscendingBinary() {
-  return (dynamic a, dynamic b) => a < b;
+  return (dynamic a, dynamic b) => (a as num) < (b as num);
 }
 
 BinaryPredicate descendingBinary() {
-  return (dynamic a, dynamic b) => a >= b;
+  return (dynamic a, dynamic b) => (a as num) >= (b as num);
 }

@@ -4,7 +4,9 @@
 
 A powerful, general-purpose library for modeling and solving Constraint Satisfaction Problems (CSPs) in Dart. Built with intelligent backtracking search, consistency-checking algorithms, and smart heuristics to efficiently solve complex logic puzzles.
 
-> **Note**: This project is a port and enhancement of the excellent [csp.js](https://github.com/PrajitR/jusCSP) by Prajit Ramachandran, adapted for Dart's strong typing, async capabilities, and object-oriented structure. This also enables easy use with flutter projects.
+This library offers **two ways to define your problem**: a high-level **Problem builder** for fast and intuitive development, and a manual **CspProblem class** for direct control over the underlying structure.
+
+> **Note**: This project is a port and enhancement of the excellent [csp.js](https://github.com/PrajitR/jusCSP) by Prajit Ramachandran, adapted for Dart's strong typing, async capabilities, and object-oriented structure. This also enables easy use with Flutter projects.
 
 ## What is a Constraint Satisfaction Problem?
 
@@ -19,12 +21,12 @@ A CSP is a mathematical problem where you need to find values for variables that
 ### Classic CSP Examples
 
 - **Sudoku**: Variables are grid squares, domains are numbers 1-9, constraints prevent duplicates in rows/columns/blocks
-- **Map Coloring**: Variables are regions, domains are colors, constraints prevent adjacent regions having the same color  
-- **N-Queens**: Variables are queen positions, domains are board squares, constraints prevent queens attacking each other
+- **Map Coloring**: Variables are regions, domains are colors, constraints prevent adjacent regions from having the same color  
+- **N-Queens**: Variables are queen positions, domains are board squares, constraints prevent queens from attacking each other
 
 ## Features
 
-This solver goes beyond brute-force search with a number of algorithms:
+This solver goes beyond brute-force search with the following implemented algorithms:
 
 ### Core Algorithms
 - **Backtracking Search**: Intelligent depth-first search that backtracks when constraints are violated
@@ -32,19 +34,20 @@ This solver goes beyond brute-force search with a number of algorithms:
 - **Generalized Arc Consistency (GAC)**: Handles n-ary constraints (multi-variable rules)
 
 ### Smart Heuristics
-- **Minimum Remaining Values (MRV)**: Chooses the most constrained variable to assign next
+- **Minimum Remaining Values (MRV)**: Chooses the most constrained variable to assign next ("fail-first" principle)
 - **Least Constraining Value (LCV)**: Selects values that preserve the most options for other variables
 
 ### Developer Features
+- **Fluent Builder API**: An intuitive Problem class to easily define your CSP
 - **Visualization Hooks**: Step-by-step callback system for demos and debugging
 - **Type Safety**: Full Dart type system integration
 - **Async Support**: Non-blocking solving with `Future`-based API
 
-## Quick Start
+## How to Use dart_csp
 
 ### 1. Installation
 
-Add `dart_csp.dart` to your project('s `lib` directory) and import it:
+Add `dart_csp.dart` to your project (e.g., in your `lib` directory) and import it:
 
 ```dart
 import 'dart_csp.dart';
@@ -52,51 +55,90 @@ import 'dart_csp.dart';
 
 ### 2. Define Your Problem
 
-Create variables, domains, and constraints:
+You have two ways to define a CSP. The builder is recommended for most use cases.
+
+#### Method 1: The Problem Builder (Recommended)
+
+The Problem class provides a clean, step-by-step builder pattern. It simplifies the process and automatically handles details like constraint symmetry.
 
 ```dart
-// Variables and their possible values
+// 1. Create a new Problem instance
+final p = Problem();
+
+// 2. Add variables and their domains
+const colors = ['red', 'green', 'blue'];
+p.addVariables(['WA', 'NT', 'SA'], colors);
+p.addVariable('Q', ['red', 'green']); // You can also add one at a time
+
+// 3. Add constraints using intuitive predicates
+// The builder automatically creates constraints for both directions (SA->WA and WA->SA)
+p.addConstraint(['SA', 'WA'], (sa, wa) => sa != wa);
+p.addConstraint(['SA', 'NT'], (sa, nt) => sa != nt);
+
+// N-ary constraints are also simple
+p.addConstraint(
+  ['WA', 'NT', 'SA'],
+  (assignment) => assignment['WA'] != 'red' || assignment['NT'] != 'green'
+);
+
+// 4. Solve it!
+final solution = await p.getSolution();
+```
+
+#### Method 2: Manual CspProblem Construction
+
+This method gives you direct access to the underlying data structures. It's useful if you are generating the problem components programmatically.
+
+```dart
+// 1. Define variables and domains
 var variables = <String, List<dynamic>>{
   'A': [1, 2, 3],
   'B': [1, 2, 3, 4],
   'C': [3, 4, 5],
 };
 
-// Binary constraints (between two variables)
+// 2. Define constraints
 var binaryConstraints = <BinaryConstraint>[
+  // For full consistency, you must add constraints for both directions manually
   BinaryConstraint('A', 'B', (a, b) => a < b),
-  BinaryConstraint('B', 'A', (b, a) => b > a), // Often need both directions
+  BinaryConstraint('B', 'A', (b, a) => b > a),
 ];
 
-// N-ary constraints (multiple variables)
 var naryConstraints = <NaryConstraint>[
   NaryConstraint(
     vars: ['A', 'B', 'C'],
-    predicate: (assignment) => 
+    predicate: (assignment) =>
         assignment['A']! + assignment['B']! == assignment['C']!,
   ),
 ];
 
-// Create the problem
+// 3. Create the problem object
 final problem = CspProblem(
   variables: variables,
   constraints: binaryConstraints,
   naryConstraints: naryConstraints,
 );
+
+// 4. Solve it!
+final solution = await CSP.solve(problem);
 ```
 
-### 3. Solve the Problem
+### 3. Handle the Solution
+
+The solver returns a Future that resolves to either a solution Map or the string "FAILURE".
 
 ```dart
 Future<void> main() async {
+  final p = Problem();
+  // ... define your problem here ...
+
   print("Solving puzzle...");
-  
-  final solution = await CSP.solve(problem);
-  
+  final solution = await p.getSolution(); // Or await CSP.solve(problem);
+
   if (solution is String) {
     print("No solution found: $solution");
-  } else {
-    print("Solution found!");
+  } else if (solution is Map) {
+    print("Solution found! 🎉");
     solution.forEach((variable, value) {
       print("  $variable = $value");
     });
@@ -106,40 +148,87 @@ Future<void> main() async {
 
 ## Advanced Usage
 
+## Advanced Usage
+
 ### Visualization and Debugging
 
-Monitor the solver's progress with callbacks:
+You can monitor the solver's progress with a callback function. This is supported by both the Problem builder and the manual CspProblem.
 
 ```dart
+// Define a callback function to print the solver's state at each step
 void visualizer(
-  Map<String, List<dynamic>> assigned, 
-  Map<String, List<dynamic>> unassigned
+  Map<String, List<dynamic>> assigned,
+  Map<String, List<dynamic>> unassigned,
 ) {
   print("\n--- Solver Step ---");
   print("Assigned: $assigned");
   print("Unassigned Domains: $unassigned");
 }
 
+// Using the Problem builder
+final p = Problem();
+// ... add variables and constraints ...
+p.setOptions(
+  timeStep: 100, // 100ms pause between steps
+  callback: visualizer,
+);
+final solution = await p.getSolution();
+
+// Or, using the manual method
 final visualProblem = CspProblem(
   variables: variables,
-  naryConstraints: naryConstraints,
-  cb: visualizer,     // Your callback function
-  timeStep: 100,      // 100ms pause between steps
+  constraints: constraints,
+  cb: visualizer,
+  timeStep: 100,
 );
-
 final solution = await CSP.solve(visualProblem);
 ```
 
 ### Real-World Example: Arithmetic Square Puzzle
 
-Here's how the included arithmetic puzzle generator uses n-ary constraints:
+Here's a side-by-side comparison of how the included arithmetic puzzle generator can be implemented using both methods.
+
+#### Using the Problem Builder (New Way)
 
 ```dart
 class PuzzleGenerator {
-  CspProblem buildPuzzleConstraints(
-    Map<String, List<List<String>>> ops, 
-    Map<String, int> clues
-  ) {
+  Problem buildPuzzleConstraintsNewWay(Map<String, int> clues) {
+    final p = Problem();
+
+    // 1. Add variables and their domains
+    for (int r = 0; r < gridSize; r++) {
+      for (int c = 0; c < gridSize; c++) {
+        final cellId = '$r,$c';
+        p.addVariable(
+          cellId,
+          clues.containsKey(cellId) ? [clues[cellId]!] : fullDomain,
+        );
+      }
+    }
+
+    // 2. Add n-ary constraints for each row and column equation
+    for (int r = 0; r < gridSize; r++) {
+      final rowVars = List<String>.generate(gridSize, (c) => '$r,$c');
+      p.addConstraint(rowVars, (assignment) {
+        // ... predicate logic to check if the equation is valid ...
+        final values = rowVars.map((v) => assignment[v]!).toList();
+        final operands = values.sublist(0, gridSize - 1);
+        final result = values.last;
+        return evaluate(operands, ops['rows']![r]) == result;
+      });
+    }
+    // ... similar loop for columns ...
+
+    return p;
+  }
+}
+```
+
+#### Using Manual Construction (Old Way)
+
+```dart
+class PuzzleGenerator {
+  CspProblem buildPuzzleConstraintsOldWay(Map<String, int> clues) {
     final variables = <String, List<dynamic>>{};
     final naryConstraints = <NaryConstraint>[];
 
@@ -148,10 +237,8 @@ class PuzzleGenerator {
       for (int c = 0; c < gridSize; c++) {
         final cellId = '$r,$c';
         if (clues.containsKey(cellId)) {
-          // Clue cells have fixed values
           variables[cellId] = [clues[cellId]];
         } else {
-          // Empty cells can be any number in range
           variables[cellId] = List<int>.generate(
             maxNum - minNum + 1, 
             (i) => i + minNum
@@ -160,10 +247,9 @@ class PuzzleGenerator {
       }
     }
 
-    // 2. Create row equation constraints
+    // 2. Create n-ary constraints for each row and column equation
     for (int r = 0; r < gridSize; r++) {
       final rowVars = List<String>.generate(gridSize, (c) => '$r,$c');
-      
       naryConstraints.add(NaryConstraint(
         vars: rowVars,
         predicate: (assignment) {
@@ -174,33 +260,46 @@ class PuzzleGenerator {
         },
       ));
     }
+    // ... similar loop for columns ...
 
-    // 3. Create column equation constraints (similar to rows)
-    // ... 
-
-    return CspProblem(
-      variables: variables, 
-      naryConstraints: naryConstraints
-    );
-  }
-
-  Future<void> solve() async {
-    final puzzle = buildPuzzleConstraints(operators, clues);
-    final solution = await CSP.solve(puzzle);
-    
-    if (solution != 'FAILURE') {
-      print("✅ Solution found!");
-      displaySolution(solution);
-    } else {
-      print("❌ No solution exists");
-    }
+    return CspProblem(variables: variables, naryConstraints: naryConstraints);
   }
 }
 ```
 
 ## API Reference
 
-### CspProblem Class
+### Problem Class (Builder)
+
+The recommended way to define a CSP using a fluent builder pattern.
+
+| Method | Parameters | Description |
+|--------|------------|-------------|
+| `addVariable()` | `String name`, `List<dynamic> domain` | Adds a single variable and its domain |
+| `addVariables()` | `List<String> names`, `List<dynamic> domain` | Adds multiple variables that share the same domain |
+| `addConstraint()` | `List<String> vars`, `Function predicate` | Adds a binary or n-ary constraint based on the number of variables |
+| `setOptions()` | `int? timeStep`, `CspCallback? callback` | Sets optional parameters for visualization |
+| `getSolution()` | (none) | Builds and solves the problem, returning a Future |
+
+#### Constraint Types in Problem Builder
+
+The `addConstraint()` method automatically determines the constraint type:
+
+- **For 2 variables**: Expects a `bool Function(dynamic, dynamic)` predicate. The builder automatically creates bidirectional constraints for full consistency.
+- **For 1, 3+ variables**: Expects a `bool Function(Map<String, dynamic>)` predicate for n-ary constraints.
+
+```dart
+// Binary constraint (automatic bidirectional)
+p.addConstraint(['A', 'B'], (a, b) => a != b);
+
+// N-ary constraint  
+p.addConstraint(['A', 'B', 'C'], (assignment) => 
+    assignment['A']! + assignment['B']! == assignment['C']!);
+```
+
+### CspProblem Class (Core Definition)
+
+The underlying data structure for a CSP when using manual construction.
 
 | Property | Type | Required | Description |
 |----------|------|----------|-------------|
@@ -239,10 +338,10 @@ static Future<dynamic> CSP.solve(CspProblem problem)
 
 ## Performance Tips
 
-1. **Use MRV heuristic**: The solver automatically picks the most constrained variable first
-2. **Define bidirectional constraints**: For binary constraints, often define both `(A,B)` and `(B,A)` directions  
-3. **Minimize domain sizes**: Smaller domains lead to faster solving
-4. **Group related constraints**: Use n-ary constraints for rules involving multiple variables instead of many binary constraints
+1. **Use the MRV Heuristic**: The solver automatically picks the most constrained variable first, which is a highly effective strategy
+2. **Handle Bidirectional Constraints**: For binary rules like A != B, consistency must be checked both ways. The Problem builder does this automatically. If building a CspProblem manually, remember to add constraints for both (A,B) and (B,A)
+3. **Minimize Domain Sizes**: The smaller the initial domains, the faster the search space can be pruned
+4. **Prefer N-ary Constraints**: For rules involving many variables (like Sudoku's "all-different" rule), a single n-ary constraint is often more efficient than dozens of binary constraints
 
 ## Contributing
 
@@ -254,4 +353,4 @@ MIT License - see LICENSE file for details.
 
 ---
 
-*Built with ❤️ for the Dart community*
+*Built with ❤️ for the Dart & Flutter community*

@@ -6,6 +6,9 @@
 /// Constraint Satisfaction Problem (CSP) and uses a generic CSP solver to find
 /// a valid solution for the remaining empty cells.
 ///
+/// This version is modified to demonstrate solving each puzzle using both the
+/// "old way" (manual CspProblem) and the "new way" (Problem builder).
+///
 /// Usage: dart gencw.dart [options]
 ///
 /// Options:
@@ -50,9 +53,6 @@ class PuzzleConfig {
 }
 
 /// Parses command-line arguments to create a [PuzzleConfig] object.
-///
-/// This function provides default values and overrides them with any valid
-/// arguments supplied by the user.
 PuzzleConfig parseArgs(List<String> args) {
   final config = PuzzleConfig();
   bool cluesManuallySet = false;
@@ -110,8 +110,6 @@ PuzzleConfig parseArgs(List<String> args) {
     }
   }
 
-  // If the grid is larger than 3x3 and clues haven't been set manually,
-  // provide a sensible default number of clues.
   if (config.gridN > 3 && !cluesManuallySet) {
     config.numClues = (config.gridN / 2).floor();
   }
@@ -134,7 +132,6 @@ class PuzzleGenerator {
 
   PuzzleGenerator(this.config);
 
-  /// Prints a message to the console only if verbose mode is enabled.
   void log(String message) {
     if (config.verbose) {
       print(message);
@@ -143,32 +140,19 @@ class PuzzleGenerator {
 
   // ------------------- Utility Methods -------------------
 
-  /// Generates a random integer within a specified range (inclusive).
   int randInt(int a, int b) => a + _random.nextInt(b - a + 1);
-
-  /// Selects a random element from a list.
   T randChoice<T>(List<T> arr) => arr[_random.nextInt(arr.length)];
-
-  /// Creates a unique string identifier for a cell at a given row and column.
   String id(int r, int c) => 'r${r}c${c}';
-
-  /// Creates a unique string identifier for an operator.
   String opId(int? r, int? c, String type, [int index = 0]) {
     if (type == 'row') return 'op_r${r}_i$index';
     if (type == 'col') return 'op_c${c}_i$index';
     return '';
   }
 
-  /// Evaluates a mathematical expression from left to right.
-  ///
-  /// For example, `evaluate([10, 5, 3], ['-', '+'])` would compute `10 - 5 + 3 = 8`.
-  /// Returns `null` if the operation is invalid (e.g., division by zero).
   int? evaluate(List<dynamic> operands, List<String> ops) {
-    // Ensure all operands are valid numbers before proceeding.
     if (operands.any((op) => op == null) || operands.length != ops.length + 1) {
       return null;
     }
-
     int currentVal = operands[0] as int;
     for (int i = 0; i < ops.length; i++) {
       final op = ops[i];
@@ -184,12 +168,11 @@ class PuzzleGenerator {
           currentVal *= nextVal;
           break;
         case '÷':
-          // Division is only valid if the divisor is non-zero and the result is an integer.
           if (nextVal == 0 || currentVal % nextVal != 0) return null;
-          currentVal ~/= nextVal; // Use integer division.
+          currentVal ~/= nextVal;
           break;
         default:
-          return null; // Invalid operator.
+          return null;
       }
     }
     return currentVal;
@@ -197,71 +180,87 @@ class PuzzleGenerator {
 
   // ------------------- CSP Modeling and Grid Display -------------------
 
-  /// Models the arithmetic puzzle as a [CspProblem].
-  ///
-  /// This is the core translation step. It defines:
-  /// - **Variables**: Each cell in the grid becomes a CSP variable (e.g., 'r0c0').
-  /// - **Domains**: The domain for each variable is the range of allowed numbers.
-  ///   If a cell is a clue, its domain is just that single value.
-  /// - **Constraints**: Each row and column equation becomes an n-ary constraint
-  ///   that involves all cells in that row/column.
-  CspProblem buildPuzzleConstraints(
+  /// **[OLD WAY]** Models the puzzle by manually constructing a [CspProblem].
+  CspProblem buildPuzzleConstraintsOldWay(
       Map<String, List<List<String>>> ops, Map<String, int> clues) {
     final variables = <String, List<dynamic>>{};
     final naryConstraints = <NaryConstraint>[];
+    final fullDomain =
+        List<int>.generate(config.maxN - config.minN + 1, (i) => i + config.minN);
 
-    // Define the variables and their initial domains.
+    for (int r = 0; r < config.gridN; r++) {
+      for (int c = 0; c < config.gridN; c++) {
+        final cellId = id(r, c);
+        variables[cellId] =
+            clues.containsKey(cellId) ? [clues[cellId]!] : fullDomain;
+      }
+    }
+
+    NaryPredicate createPredicate(List<String> varNames, List<String> opList) {
+      return (assign) {
+        final values = varNames.map((v) => assign[v]).toList();
+        final operands = values.sublist(0, config.gridN - 1);
+        final result = values.last;
+        if (operands.any((op) => op == null) || result == null) return false;
+        return evaluate(operands, opList) == result;
+      };
+    }
+
+    for (int r = 0; r < config.gridN; r++) {
+      final rowVars = List<String>.generate(config.gridN, (c) => id(r, c));
+      naryConstraints.add(NaryConstraint(
+          vars: rowVars, predicate: createPredicate(rowVars, ops['rows']![r])));
+    }
+
+    for (int c = 0; c < config.gridN; c++) {
+      final colVars = List<String>.generate(config.gridN, (r) => id(r, c));
+      naryConstraints.add(NaryConstraint(
+          vars: colVars, predicate: createPredicate(colVars, ops['cols']![c])));
+    }
+
+    return CspProblem(variables: variables, naryConstraints: naryConstraints);
+  }
+
+  /// **[NEW WAY]** Models the puzzle using the [Problem] builder class.
+  Problem buildPuzzleConstraintsNewWay(
+      Map<String, List<List<String>>> ops, Map<String, int> clues) {
+    final p = Problem();
+    final fullDomain =
+        List<int>.generate(config.maxN - config.minN + 1, (i) => i + config.minN);
+
     for (int r = 0; r < config.gridN; r++) {
       for (int c = 0; c < config.gridN; c++) {
         final cellId = id(r, c);
         if (clues.containsKey(cellId)) {
-          // If the cell is a clue, its domain contains only that one value.
-          variables[cellId] = [clues[cellId]];
+          p.addVariable(cellId, [clues[cellId]!]);
         } else {
-          // Otherwise, its domain is the full range of allowed numbers.
-          variables[cellId] = List<int>.generate(
-              config.maxN - config.minN + 1, (i) => i + config.minN);
+          p.addVariable(cellId, fullDomain);
         }
       }
     }
 
-    // Create an n-ary constraint for each row equation.
-    // For a 4x4 grid, a row constraint involves 'r0c0', 'r0c1', 'r0c2', 'r0c3'
-    // and checks if `evaluate([val0, val1, val2], [op1, op2]) == val3`.
+    NaryPredicate createPredicate(List<String> varNames, List<String> opList) {
+      return (assign) {
+        final values = varNames.map((v) => assign[v]).toList();
+        final operands = values.sublist(0, config.gridN - 1);
+        final result = values.last;
+        if (operands.any((op) => op == null) || result == null) return false;
+        return evaluate(operands, opList) == result;
+      };
+    }
+
     for (int r = 0; r < config.gridN; r++) {
       final rowVars = List<String>.generate(config.gridN, (c) => id(r, c));
-      naryConstraints.add(NaryConstraint(
-        vars: rowVars,
-        predicate: (assign) {
-          final values = rowVars.map((v) => assign[v]).toList();
-          final operands = values.sublist(0, config.gridN - 1);
-          final result = values.last;
-          if (operands.any((op) => op == null) || result == null) return false;
-          return evaluate(operands, ops['rows']![r]) == result;
-        },
-      ));
+      p.addConstraint(rowVars, createPredicate(rowVars, ops['rows']![r]));
     }
 
-    // Create an n-ary constraint for each column equation.
     for (int c = 0; c < config.gridN; c++) {
       final colVars = List<String>.generate(config.gridN, (r) => id(r, c));
-      naryConstraints.add(NaryConstraint(
-        vars: colVars,
-        predicate: (assign) {
-          final values = colVars.map((v) => assign[v]).toList();
-          final operands = values.sublist(0, config.gridN - 1);
-          final result = values.last;
-          if (operands.any((op) => op == null) || result == null) return false;
-          return evaluate(operands, ops['cols']![c]) == result;
-        },
-      ));
+      p.addConstraint(colVars, createPredicate(colVars, ops['cols']![c]));
     }
-
-    return CspProblem(
-        variables: variables, naryConstraints: naryConstraints);
+    return p;
   }
 
-  /// Formats a grid solution or puzzle skeleton into a readable ASCII string.
   String asciiGrid(
       Map<String, dynamic> solution, Map<String, String> ops, int n) {
     final buffer = StringBuffer();
@@ -295,15 +294,9 @@ class PuzzleGenerator {
 
   // ------------------- Main Generation Loop -------------------
 
-  /// The main loop that attempts to generate a solvable puzzle.
-  ///
-  /// This method repeatedly generates random layouts of operators and clues,
-  /// models them as a CSP, and attempts to solve them. It stops when a solvable
-  /// layout is found or the maximum number of attempts is reached.
   Future<void> generate() async {
     print('\n--- Generating ${config.gridN}x${config.gridN} Puzzle ---');
-    print(
-        '(Range: ${config.minN}-${config.maxN}, Ops: [${config.ops.join(', ')}])');
+    print('(Range: ${config.minN}-${config.maxN}, Ops: [${config.ops.join(', ')}])');
     if (config.numClues > 0) {
       print('(Seeding with up to ${config.numClues} random clues)');
     }
@@ -311,25 +304,21 @@ class PuzzleGenerator {
     for (int attempt = 1; attempt <= config.maxAttempts; attempt++) {
       print('\n--- Attempt $attempt/${config.maxAttempts} ---');
 
-      // Step 1: Randomly generate operators for each row and column.
+      // Step 1: Randomly generate operators.
       final opLayout = {'rows': <List<String>>[], 'cols': <List<String>>[]};
       final opDetails = <String, String>{};
       for (int r = 0; r < config.gridN; r++) {
-        final ops =
-            List.generate(config.gridN - 2, (_) => randChoice(config.ops));
+        final ops = List.generate(config.gridN - 2, (_) => randChoice(config.ops));
         opLayout['rows']!.add(ops);
         ops.asMap().forEach((i, op) => opDetails[opId(r, null, 'row', i)] = op);
       }
       for (int c = 0; c < config.gridN; c++) {
-        final ops =
-            List.generate(config.gridN - 2, (_) => randChoice(config.ops));
+        final ops = List.generate(config.gridN - 2, (_) => randChoice(config.ops));
         opLayout['cols']!.add(ops);
         ops.asMap().forEach((i, op) => opDetails[opId(null, c, 'col', i)] = op);
       }
 
-      // Step 2: Determine forbidden clue locations. For an equation `A / B = C`,
-      // `B` is a divisor. Placing a clue at `B` can excessively constrain the
-      // puzzle, often making it unsolvable. We forbid placing clues there.
+      // Step 2: Determine forbidden clue locations (e.g., divisors).
       final forbiddenClueCells = <String>{};
       opLayout['rows']!.asMap().forEach((r, rowOps) {
         rowOps.asMap().forEach((i, op) {
@@ -353,31 +342,38 @@ class PuzzleGenerator {
           .where((cellId) => !forbiddenClueCells.contains(cellId))
           .toList()
         ..shuffle(_random);
-
       final numCluesToPlace = min(config.numClues, validClueCells.length);
       for (int i = 0; i < numCluesToPlace; i++) {
         clues[validClueCells[i]] = randInt(config.minN, config.maxN);
       }
 
       // Step 4: Display the generated puzzle skeleton.
+      print("Generated puzzle layout:");
       print(asciiGrid(clues, opDetails, config.gridN));
 
-      // Step 5: Model and attempt to solve the puzzle.
-      print("Solving...");
-      final prob = buildPuzzleConstraints(opLayout, clues);
-      final solution = await CSP.solve(prob);
+      // Step 5: Model and attempt to solve the puzzle using both methods.
+
+      // [Method 1: The Old Way]
+      print("[1] Solving with the OLD WAY (Manual CspProblem)...");
+      final oldWayProblem = buildPuzzleConstraintsOldWay(opLayout, clues);
+      final oldWaySolution = await CSP.solve(oldWayProblem);
+
+      // [Method 2: The New Way]
+      print("[2] Solving with the NEW WAY (Problem Builder)...");
+      final newWayProblemBuilder = buildPuzzleConstraintsNewWay(opLayout, clues);
+      final newWaySolution = await newWayProblemBuilder.getSolution();
 
       // Step 6: Report the outcome.
-      if (solution != 'FAILURE') {
-        print("\n✅ SUCCESS! Found a solution for the layout above:");
-        print(asciiGrid(solution, opDetails, config.gridN));
+      // The solution from both methods should be identical.
+      if (oldWaySolution != 'FAILURE') {
+        print("\n✅ SUCCESS! Both methods found a solution for the layout above:");
+        print(asciiGrid(oldWaySolution, opDetails, config.gridN));
         return; // Exit successfully.
       } else {
-        print("❌ Failed to solve. Generating new layout.");
+        print("❌ Both methods failed to solve. Generating new layout.");
       }
     }
     print(
         '\n--- FAILED to find a solvable layout in ${config.maxAttempts} attempts. ---');
   }
 }
-

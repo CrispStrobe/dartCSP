@@ -1,0 +1,28 @@
+name: dart_csp
+description: A comprehensive Constraint Satisfaction Problem (CSP) solver with backtracking, AC-3, GAC, and string constraint parsing.
+version: 2.0.0
+repository: https://github.com/yourusername/dart_csp
+
+environment:
+  sdk: ^3.0.0
+
+dependencies:
+  # No external dependencies - pure Dart implementation
+
+dev_dependencies:
+  test: ^1.24.0
+  lints: ^3.0.0
+
+# Package structure
+# lib/
+#   dart_csp.dart                 # Main library export
+#   src/
+#     types.dart                  # Core type definitions
+#     solver.dart                 # CSP solver algorithms
+#     problem.dart               # Problem builder
+#     builtin_constraints.dart   # Built-in constraint factories
+#     constraint_parser.dart     # String constraint parsing
+# example/
+#   usage_examples.dart          # Complete usage examples
+# test/
+#   *_test.dart                  # Unit tests

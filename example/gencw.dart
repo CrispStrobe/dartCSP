@@ -20,7 +20,7 @@
 
 import 'dart:io';
 import 'dart:math';
-import 'dart_csp.dart';
+import 'package:dart_csp/dart_csp.dart';
 
 // ------------------- Configuration & Argument Parsing -------------------
 

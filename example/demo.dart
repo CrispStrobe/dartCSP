@@ -1,6 +1,6 @@
 // Import the CSP library. Ensure dart_csp.dart is in the same directory.
 import 'dart:math';
-import 'dart_csp.dart';
+import 'package:dart_csp/dart_csp.dart';
 
 /// Main entry point for the comprehensive demonstrations.
 Future<void> main() async {

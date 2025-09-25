@@ -1,4 +1,4 @@
-/// String constraint parsing functionality for the CSP library.
+// String constraint parsing functionality for the CSP library.
 
 import 'types.dart';
 import 'builtin_constraints.dart';

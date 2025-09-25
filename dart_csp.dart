@@ -9,6 +9,8 @@
 /// search space efficiently. It supports both binary (between two variables)
 /// and n-ary (among multiple variables) constraints.
 ///
+/// To define a problem, use the user-friendly [Problem] builder class.
+///
 /// Core algorithms implemented:
 /// - Backtracking: A form of depth-first search for exploring possible assignments.
 /// - AC-3: Enforces arc consistency for binary constraints.
@@ -17,6 +19,139 @@
 /// - LCV (Least Constraining Value): A heuristic for value ordering.
 
 import 'dart:async';
+
+// ------------------- Problem Builder -------------------
+
+/// A user-friendly wrapper class to build a constraint satisfaction problem.
+///
+/// This class provides a builder pattern API to add variables and constraints
+/// before creating a [CspProblem] object to be solved by the [CSP] solver.
+///
+/// ### Usage Example
+/// ```dart
+/// final p = Problem();
+/// const colors = ['red', 'green', 'blue'];
+///
+/// // 1. Add variables and their domains
+/// p.addVariables(['WA', 'NT', 'SA', 'Q', 'NSW', 'V', 'T'], colors);
+///
+/// // 2. Add constraints
+/// p.addConstraint(['SA', 'WA'], (sa, wa) => sa != wa);
+/// p.addConstraint(['SA', 'NT'], (sa, nt) => sa != nt);
+/// // ... more constraints
+///
+/// // 3. Get the solution
+/// final solution = await p.getSolution();
+/// if (solution is Map) {
+///   print("Solution found: $solution");
+/// } else {
+///   print("No solution found!");
+/// }
+/// ```
+class Problem {
+  final Map<String, List<dynamic>> _variables = {};
+  final List<BinaryConstraint> _constraints = [];
+  final List<NaryConstraint> _naryConstraints = [];
+  int _timeStep = 1;
+  CspCallback? _cb;
+
+  /// Adds a single variable and its domain to the problem.
+  ///
+  /// - [name]: The name of the variable.
+  /// - [domain]: A list of possible values for the variable.
+  void addVariable(String name, List<dynamic> domain) {
+    if (_variables.containsKey(name)) {
+      throw ArgumentError("Variable '$name' already exists.");
+    }
+    if (domain.isEmpty) {
+      throw ArgumentError("Domain for '$name' must be a non-empty list.");
+    }
+    _variables[name] = List.from(domain);
+  }
+
+  /// Adds multiple variables that share the same domain.
+  ///
+  /// - [names]: A list of variable names.
+  /// - [domain]: A list of possible values for all variables.
+  void addVariables(List<String> names, List<dynamic> domain) {
+    for (final name in names) {
+      addVariable(name, domain);
+    }
+  }
+
+  /// Adds a constraint to the problem.
+  ///
+  /// Automatically routes to binary or n-ary constraint types based on the
+  /// number of variables involved.
+  ///
+  /// - For **2 variables**, the [predicate] must be a [BinaryPredicate], i.e.,
+  ///   `bool Function(dynamic, dynamic)`. The constraint will be added for
+  ///   both directions (e.g., A->B and B->A) to ensure full consistency checks.
+  /// - For **1, 3, or more variables**, the [predicate] must be an [NaryPredicate], i.e.,
+  ///   `bool Function(Map<String, dynamic>)`.
+  ///
+  /// - [variables]: A list of variable names this constraint applies to.
+  /// - [predicate]: The function that evaluates the constraint.
+  void addConstraint<T extends Function>(List<String> variables, T predicate) {
+    if (variables.isEmpty) {
+      throw ArgumentError("addConstraint requires a non-empty list of variables.");
+    }
+    for (final v in variables) {
+      if (!_variables.containsKey(v)) {
+        throw ArgumentError(
+            "addConstraint references variable '$v' which has not been added yet.");
+      }
+    }
+
+    if (variables.length == 2) {
+      if (predicate is! BinaryPredicate) {
+        throw ArgumentError(
+            'For 2 variables, predicate must be of type bool Function(dynamic, dynamic)');
+      }
+      final v1 = variables[0];
+      final v2 = variables[1];
+      // To ensure full arc consistency, we create directed constraints for
+      // both directions from a single user-defined predicate.
+      _constraints.add(BinaryConstraint(v1, v2, predicate));
+      _constraints.add(BinaryConstraint(v2, v1, (val2, val1) => predicate(val1, val2)));
+    } else {
+      if (predicate is! NaryPredicate) {
+        throw ArgumentError(
+            'For 1, 3, or more variables, predicate must be of type bool Function(Map<String, dynamic>)');
+      }
+      _naryConstraints.add(NaryConstraint(vars: variables, predicate: predicate));
+    }
+  }
+
+  /// Sets the optional time step and callback for visualizing the search.
+  ///
+  /// - [timeStep]: The delay in milliseconds between solver steps.
+  /// - [callback]: The function to call at each step.
+  void setOptions({int? timeStep, CspCallback? callback}) {
+    if (timeStep != null) _timeStep = timeStep;
+    if (callback != null) _cb = callback;
+  }
+
+  /// Solves the problem and returns the first solution found.
+  ///
+  /// Assembles a [CspProblem] object from the added variables and constraints
+  /// and passes it to the core [CSP.solve] function.
+  ///
+  /// Returns a [Future] that completes with:
+  /// - A `Map<String, dynamic>` of variable assignments if a solution is found.
+  /// - The string 'FAILURE' if no solution exists.
+  Future<dynamic> getSolution() {
+    final problem = CspProblem(
+      variables: _variables,
+      constraints: _constraints,
+      naryConstraints: _naryConstraints,
+      timeStep: _timeStep,
+      cb: _cb,
+    );
+    return CSP.solve(problem);
+  }
+}
+
 
 // ------------------- Type Definitions -------------------
 
@@ -280,8 +415,7 @@ class CSP {
 
     return variables;
   }
-  
-  /// RESTORED: This helper method was missing.
+
   /// Builds an index mapping variables to their n-ary constraints.
   ///
   /// This is a pre-computation step to optimize GAC. Instead of searching all
@@ -573,4 +707,3 @@ class CSP {
     }
   }
 }
-

@@ -83,7 +83,8 @@ class Problem {
   /// - [predicate]: The function that evaluates the constraint.
   void addConstraint<T extends Function>(List<String> variables, T predicate) {
     if (variables.isEmpty) {
-      throw ArgumentError("addConstraint requires a non-empty list of variables.");
+      throw ArgumentError(
+          "addConstraint requires a non-empty list of variables.");
     }
     for (final v in variables) {
       if (!_variables.containsKey(v)) {
@@ -102,13 +103,15 @@ class Problem {
       // To ensure full arc consistency, we create directed constraints for
       // both directions from a single user-defined predicate.
       _constraints.add(BinaryConstraint(v1, v2, predicate));
-      _constraints.add(BinaryConstraint(v2, v1, (val2, val1) => predicate(val1, val2)));
+      _constraints
+          .add(BinaryConstraint(v2, v1, (val2, val1) => predicate(val1, val2)));
     } else {
       if (predicate is! NaryPredicate) {
         throw ArgumentError(
             'For 1, 3, or more variables, predicate must be of type bool Function(Map<String, dynamic>)');
       }
-      _naryConstraints.add(NaryConstraint(vars: variables, predicate: predicate));
+      _naryConstraints
+          .add(NaryConstraint(vars: variables, predicate: predicate));
     }
   }
 
@@ -153,7 +156,7 @@ class Problem {
   /// final p = Problem();
   /// p.addVariables(['A', 'B'], [1, 2, 3]);
   /// p.addStringConstraint('A < B');
-  /// 
+  ///
   /// print('All solutions where A < B:');
   /// await for (final solution in p.getSolutions()) {
   ///   print(solution);
@@ -186,7 +189,8 @@ class Problem {
   /// Creates a copy of this problem
   Problem copy() {
     final newProblem = Problem();
-    newProblem._variables.addAll(_variables.map((k, v) => MapEntry(k, List.from(v))));
+    newProblem._variables
+        .addAll(_variables.map((k, v) => MapEntry(k, List.from(v))));
     newProblem._constraints.addAll(_constraints);
     newProblem._naryConstraints.addAll(_naryConstraints);
     newProblem._timeStep = _timeStep;
@@ -216,13 +220,10 @@ class Problem {
 
   /// Gets all variables and their current domains
   Map<String, List<dynamic>> get variables => Map.unmodifiable(_variables);
-
-
 }
 
 /// Extension methods for Problem class to make using built-in constraints easier
 extension BuiltinConstraints on Problem {
-  
   /// Add an all-different constraint
   void addAllDifferent(List<String> variables) {
     if (variables.length == 2) {
@@ -231,7 +232,7 @@ extension BuiltinConstraints on Problem {
       addConstraint(variables, allDifferent());
     }
   }
-  
+
   /// Add an all-equal constraint
   void addAllEqual(List<String> variables) {
     if (variables.length == 2) {
@@ -240,25 +241,30 @@ extension BuiltinConstraints on Problem {
       addConstraint(variables, allEqual());
     }
   }
-  
+
   /// Add an exact sum constraint
-  void addExactSum(List<String> variables, num targetSum, {List<num>? multipliers}) {
+  void addExactSum(List<String> variables, num targetSum,
+      {List<num>? multipliers}) {
     if (variables.length == 2) {
-      addConstraint(variables, exactSumBinary(targetSum, multipliers: multipliers));
+      addConstraint(
+          variables, exactSumBinary(targetSum, multipliers: multipliers));
     } else {
       addConstraint(variables, exactSum(targetSum, multipliers: multipliers));
     }
   }
-  
+
   /// Add a sum range constraint
-  void addSumRange(List<String> variables, num minSum, num maxSum, {List<num>? multipliers}) {
+  void addSumRange(List<String> variables, num minSum, num maxSum,
+      {List<num>? multipliers}) {
     if (variables.length == 2) {
-      addConstraint(variables, sumInRangeBinary(minSum, maxSum, multipliers: multipliers));
+      addConstraint(variables,
+          sumInRangeBinary(minSum, maxSum, multipliers: multipliers));
     } else {
-      addConstraint(variables, sumInRange(minSum, maxSum, multipliers: multipliers));
+      addConstraint(
+          variables, sumInRange(minSum, maxSum, multipliers: multipliers));
     }
   }
-  
+
   /// Add an exact product constraint
   void addExactProduct(List<String> variables, num targetProduct) {
     if (variables.length == 2) {
@@ -267,7 +273,7 @@ extension BuiltinConstraints on Problem {
       addConstraint(variables, exactProduct(targetProduct));
     }
   }
-  
+
   /// Add an in-set constraint (variables must take values from allowed set)
   void addInSet(List<String> variables, Set<dynamic> allowedValues) {
     if (variables.length == 2) {
@@ -276,7 +282,7 @@ extension BuiltinConstraints on Problem {
       addConstraint(variables, inSet(allowedValues));
     }
   }
-  
+
   /// Add a not-in-set constraint (variables cannot take values from forbidden set)
   void addNotInSet(List<String> variables, Set<dynamic> forbiddenValues) {
     if (variables.length == 2) {
@@ -285,7 +291,7 @@ extension BuiltinConstraints on Problem {
       addConstraint(variables, notInSet(forbiddenValues));
     }
   }
-  
+
   /// Add an ordering constraint (variables in ascending order)
   void addAscending(List<String> variables) {
     if (variables.length == 2) {
@@ -294,7 +300,7 @@ extension BuiltinConstraints on Problem {
       addConstraint(variables, ascendingInOrder(variables));
     }
   }
-  
+
   /// Add a strict ordering constraint (variables in strictly ascending order)
   void addStrictlyAscending(List<String> variables) {
     if (variables.length == 2) {
@@ -303,7 +309,7 @@ extension BuiltinConstraints on Problem {
       addConstraint(variables, strictlyAscendingInOrder(variables));
     }
   }
-  
+
   /// Add a descending order constraint
   void addDescending(List<String> variables) {
     if (variables.length == 2) {
@@ -316,17 +322,16 @@ extension BuiltinConstraints on Problem {
 
 /// Extension to add string constraint parsing to Problem class
 extension StringConstraints on Problem {
-  
   /// Add a constraint from a string expression
-  /// 
+  ///
   /// Supports expressions like:
   /// - "A != B" (all different)
-  /// - "A + B == 10" (exact sum)  
+  /// - "A + B == 10" (exact sum)
   /// - "A * B >= 5" (minimum product)
   /// - "A + B + C == D" (variable sum)
   /// - "A in [1, 2, 3]" (set membership)
   /// - "A < B < C" (ordering)
-  /// 
+  ///
   /// Example:
   /// ```dart
   /// final p = Problem();
@@ -336,8 +341,9 @@ extension StringConstraints on Problem {
   /// ```
   void addStringConstraint(String constraintStr) {
     try {
-      final parsed = ConstraintParser.parseConstraint(constraintStr, _variables);
-      
+      final parsed =
+          ConstraintParser.parseConstraint(constraintStr, _variables);
+
       switch (parsed.type) {
         case ConstraintType.binary:
           addConstraint(parsed.variables, parsed.predicate as BinaryPredicate);
@@ -352,10 +358,11 @@ extension StringConstraints on Problem {
           break;
       }
     } catch (e) {
-      throw ConstraintParseException('Failed to parse constraint', constraintStr);
+      throw ConstraintParseException(
+          'Failed to parse constraint', constraintStr);
     }
   }
-  
+
   /// Add multiple string constraints at once
   void addStringConstraints(List<String> constraints) {
     for (final constraint in constraints) {
@@ -366,7 +373,6 @@ extension StringConstraints on Problem {
 
 /// Extension for debugging and introspection
 extension ProblemDebug on Problem {
-  
   /// Print a summary of the problem
   void printSummary() {
     print('CSP Problem Summary:');
@@ -377,23 +383,24 @@ extension ProblemDebug on Problem {
       print('    ${entry.key}: ${entry.value}');
     }
   }
-  
+
   /// Validate the problem for common issues
   List<String> validate() {
     final issues = <String>[];
-    
+
     // Check for empty domains
     for (final entry in _variables.entries) {
       if (entry.value.isEmpty) {
         issues.add('Variable ${entry.key} has empty domain');
       }
     }
-    
+
     // Check if problem is over-constrained (more constraints than variables)
     if (constraintCount > variableCount * 2) {
-      issues.add('Problem may be over-constrained (${constraintCount} constraints for ${variableCount} variables)');
+      issues.add(
+          'Problem may be over-constrained (${constraintCount} constraints for ${variableCount} variables)');
     }
-    
+
     // Check for isolated variables (variables with no constraints)
     final constrainedVariables = <String>{};
     for (final constraint in _constraints) {
@@ -403,22 +410,21 @@ extension ProblemDebug on Problem {
     for (final constraint in _naryConstraints) {
       constrainedVariables.addAll(constraint.vars);
     }
-    
+
     for (final varName in _variables.keys) {
       if (!constrainedVariables.contains(varName)) {
         issues.add('Variable $varName has no constraints (isolated)');
       }
     }
-    
+
     return issues;
   }
 }
 
 /// Extension providing utilities for working with multiple solutions
 extension MultipleSolutions on Problem {
-  
   /// Get all solutions as a List (convenience method for small solution sets)
-  /// 
+  ///
   /// Warning: This will collect all solutions in memory. For problems with
   /// many solutions, prefer using getSolutions() stream directly.
   ///
@@ -437,9 +443,9 @@ extension MultipleSolutions on Problem {
     }
     return solutions;
   }
-  
+
   /// Count the total number of solutions without storing them
-  /// 
+  ///
   /// This is memory-efficient for problems with many solutions.
   ///
   /// Example:
@@ -454,9 +460,9 @@ extension MultipleSolutions on Problem {
     }
     return count;
   }
-  
+
   /// Check if multiple solutions exist without finding them all
-  /// 
+  ///
   /// This stops after finding the second solution, making it efficient
   /// for determining if a problem has a unique solution.
   ///
@@ -478,10 +484,8 @@ extension MultipleSolutions on Problem {
     return false;
   }
 
-  
-  
   /// Get the first N solutions
-  /// 
+  ///
   /// This stops the search after finding the specified number of solutions,
   /// making it more efficient than finding all solutions if you only need a few.
   /// This is useful when you want to see a few examples without processing all solutions.
@@ -505,5 +509,4 @@ extension MultipleSolutions on Problem {
     }
     return solutions;
   }
-
 }

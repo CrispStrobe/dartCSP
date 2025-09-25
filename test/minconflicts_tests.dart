@@ -43,12 +43,14 @@ bool isQueensSolutionValid(Map<String, dynamic> solution, int n) {
     for (int j = i + 1; j < n; j++) {
       // Check for same row
       if (positions[i] == positions[j]) {
-        print('Validation Error: Queens ${i + 1} and ${j + 1} are in the same row!');
+        print(
+            'Validation Error: Queens ${i + 1} and ${j + 1} are in the same row!');
         return false;
       }
       // Check for diagonal conflict
       if ((positions[i] - positions[j]).abs() == (i - j).abs()) {
-        print('Validation Error: Queens ${i + 1} and ${j + 1} are on the same diagonal!');
+        print(
+            'Validation Error: Queens ${i + 1} and ${j + 1} are on the same diagonal!');
         return false;
       }
     }
@@ -57,13 +59,15 @@ bool isQueensSolutionValid(Map<String, dynamic> solution, int n) {
 }
 
 /// Checks if a given Map Coloring solution is valid.
-bool isMapSolutionValid(Map<String, dynamic> solution, Map<String, List<String>> neighbors) {
+bool isMapSolutionValid(
+    Map<String, dynamic> solution, Map<String, List<String>> neighbors) {
   for (final region in solution.keys) {
     final regionColor = solution[region];
     final regionNeighbors = neighbors[region] ?? [];
     for (final neighbor in regionNeighbors) {
       if (solution.containsKey(neighbor) && solution[neighbor] == regionColor) {
-        print('Validation Error: Adjacent regions $region and $neighbor have the same color!');
+        print(
+            'Validation Error: Adjacent regions $region and $neighbor have the same color!');
         return false;
       }
     }
@@ -71,12 +75,11 @@ bool isMapSolutionValid(Map<String, dynamic> solution, Map<String, List<String>>
   return true;
 }
 
-
 void main() {
   group('Min-Conflicts Algorithm Tests', () {
-
     // Test Facet 1: Correctness on a classic, highly-constrained problem (N-Queens)
-    test('solves 8-Queens and produces a valid, non-conflicting solution', () async {
+    test('solves 8-Queens and produces a valid, non-conflicting solution',
+        () async {
       final p = Problem();
       const n = 8;
       final queens = List.generate(n, (i) => 'Q${i + 1}');
@@ -101,25 +104,32 @@ void main() {
       // The crucial part is that IF it returns a solution, that solution MUST be valid.
       if (solution is Map<String, dynamic>) {
         print('Min-Conflicts found an 8-Queens solution: $solution');
-        
+
         // VISUALIZE THE SOLUTION!
         print('Visualized Board:');
         printQueensBoard(solution);
 
         expect(isQueensSolutionValid(solution, n), isTrue,
             reason: 'The returned solution must be valid.');
-    } else {
-        print('Min-Conflicts did not find an 8-Queens solution in time, which is acceptable.');
+      } else {
+        print(
+            'Min-Conflicts did not find an 8-Queens solution in time, which is acceptable.');
         expect(solution, equals('FAILURE'));
       }
     }, timeout: Timeout(Duration(seconds: 15)));
 
     // Test Facet 2: Correctness on a different type of problem (Map Coloring)
-    test('solves Map Coloring and produces a valid, non-conflicting solution', () async {
+    test('solves Map Coloring and produces a valid, non-conflicting solution',
+        () async {
       final p = Problem();
       final neighbors = {
-        'WA': ['NT', 'SA'], 'NT': ['WA', 'SA', 'Q'], 'SA': ['WA', 'NT', 'Q', 'NSW', 'V'],
-        'Q': ['NT', 'SA', 'NSW'], 'NSW': ['Q', 'SA', 'V'], 'V': ['SA', 'NSW'], 'T': <String>[]
+        'WA': ['NT', 'SA'],
+        'NT': ['WA', 'SA', 'Q'],
+        'SA': ['WA', 'NT', 'Q', 'NSW', 'V'],
+        'Q': ['NT', 'SA', 'NSW'],
+        'NSW': ['Q', 'SA', 'V'],
+        'V': ['SA', 'NSW'],
+        'T': <String>[]
       };
       final regions = neighbors.keys.toList();
       final colors = ['red', 'green', 'blue'];
@@ -135,9 +145,12 @@ void main() {
 
       if (solution is Map<String, dynamic>) {
         print('Min-Conflicts found a Map Coloring solution: $solution');
-        expect(isMapSolutionValid(solution, neighbors), isTrue, reason: 'The returned solution must not have adjacent regions with the same color.');
+        expect(isMapSolutionValid(solution, neighbors), isTrue,
+            reason:
+                'The returned solution must not have adjacent regions with the same color.');
       } else {
-        print('Min-Conflicts did not find a Map Coloring solution in time, which is acceptable.');
+        print(
+            'Min-Conflicts did not find a Map Coloring solution in time, which is acceptable.');
         expect(solution, equals('FAILURE'));
       }
     });
@@ -158,27 +171,30 @@ void main() {
     });
 
     // Test Facet 4: Respecting the maxSteps parameter
-    test('respects maxSteps limit and fails on a complex problem with too few steps', () async {
-       final p = Problem();
-       const n = 8;
-       final queens = List.generate(n, (i) => 'Q${i+1}');
-       final domain = List.generate(n, (i) => i+1);
-       p.addVariables(queens, domain);
-       p.addAllDifferent(queens);
-       for (int i = 0; i < n; i++) {
-         for (int j = i + 1; j < n; j++) {
-           final colDiff = j - i;
-           p.addConstraint([queens[i], queens[j]], (posI, posJ) => (posI-posJ).abs() != colDiff);
-         }
-       }
-       
-       // Give it an absurdly small number of steps. The probability of solving 8-Queens
-       // in 5 steps is astronomically low. We expect it to fail.
-       final solution = await p.solveWithMinConflicts(maxSteps: 5);
+    test(
+        'respects maxSteps limit and fails on a complex problem with too few steps',
+        () async {
+      final p = Problem();
+      const n = 8;
+      final queens = List.generate(n, (i) => 'Q${i + 1}');
+      final domain = List.generate(n, (i) => i + 1);
+      p.addVariables(queens, domain);
+      p.addAllDifferent(queens);
+      for (int i = 0; i < n; i++) {
+        for (int j = i + 1; j < n; j++) {
+          final colDiff = j - i;
+          p.addConstraint([queens[i], queens[j]],
+              (posI, posJ) => (posI - posJ).abs() != colDiff);
+        }
+      }
 
-       // This test asserts that the algorithm terminates and returns FAILURE,
-       // respecting the step limit, rather than getting stuck in an infinite loop.
-       expect(solution, equals('FAILURE'));
+      // Give it an absurdly small number of steps. The probability of solving 8-Queens
+      // in 5 steps is astronomically low. We expect it to fail.
+      final solution = await p.solveWithMinConflicts(maxSteps: 5);
+
+      // This test asserts that the algorithm terminates and returns FAILURE,
+      // respecting the step limit, rather than getting stuck in an infinite loop.
+      expect(solution, equals('FAILURE'));
     });
   });
 }

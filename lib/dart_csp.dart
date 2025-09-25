@@ -70,7 +70,7 @@
 /// // String constraints are parsed automatically
 /// p.addStringConstraints([
 ///   "A != B",
-///   "B != C", 
+///   "B != C",
 ///   "A + B + C <= 10",
 ///   "A + B == C"
 /// ]);
@@ -118,7 +118,7 @@ export 'src/constraint_parser.dart';
 Problem createProblem() => Problem();
 
 /// Convenience function to solve a problem with variables and constraints
-/// 
+///
 /// Example:
 /// ```dart
 /// final solution = await solveProblem(
@@ -133,25 +133,25 @@ Future<dynamic> solveProblem({
   CspCallback? callback,
 }) async {
   final problem = Problem();
-  
+
   // Add variables
   for (final entry in variables.entries) {
     problem.addVariable(entry.key, entry.value);
   }
-  
+
   // Add string constraints
   problem.addStringConstraints(constraints);
-  
+
   // Set options if provided
   if (timeStep != null || callback != null) {
     problem.setOptions(timeStep: timeStep, callback: callback);
   }
-  
+
   return await problem.getSolution();
 }
 
 /// Convenience function to find all solutions to a problem with string constraints
-/// 
+///
 /// Example:
 /// ```dart
 /// final solutions = <Map<String, dynamic>>[];
@@ -168,21 +168,21 @@ Stream<Map<String, dynamic>> solveAllProblems({
   required List<String> constraints,
 }) async* {
   final problem = Problem();
-  
+
   // Add variables
   for (final entry in variables.entries) {
     problem.addVariable(entry.key, entry.value);
   }
-  
+
   // Add string constraints
   problem.addStringConstraints(constraints);
-  
+
   // Stream all solutions
   yield* problem.getSolutions();
 }
 
 /// Quick helper for common all-different problems
-/// 
+///
 /// Example:
 /// ```dart
 /// final solution = await solveAllDifferent(
@@ -201,7 +201,7 @@ Future<dynamic> solveAllDifferent({
 }
 
 /// Quick helper for finding all solutions to all-different problems
-/// 
+///
 /// Example:
 /// ```dart
 /// final solutions = <Map<String, dynamic>>[];
@@ -223,7 +223,7 @@ Stream<Map<String, dynamic>> solveAllDifferentMultiple({
 }
 
 /// Quick helper for sum constraint problems
-/// 
+///
 /// Example:
 /// ```dart
 /// final solution = await solveSumProblem(
@@ -245,7 +245,7 @@ Future<dynamic> solveSumProblem({
 }
 
 /// Quick helper for finding all solutions to sum constraint problems
-/// 
+///
 /// Example:
 /// ```dart
 /// final solutions = <Map<String, dynamic>>[];
@@ -270,9 +270,9 @@ Stream<Map<String, dynamic>> solveSumProblemMultiple({
 }
 
 /// Utility function to count solutions without storing them in memory
-/// 
+///
 /// This is memory-efficient for problems with many solutions.
-/// 
+///
 /// Example:
 /// ```dart
 /// final count = await countAllSolutions(
@@ -296,9 +296,9 @@ Future<int> countAllSolutions({
 }
 
 /// Utility function to check if a problem has multiple solutions
-/// 
+///
 /// This is efficient as it stops after finding the second solution.
-/// 
+///
 /// Example:
 /// ```dart
 /// final hasMultiple = await hasMultipleSolutions(
@@ -322,7 +322,7 @@ Future<bool> hasMultipleSolutions({
 }
 
 /// Utility function to get the first N solutions efficiently
-/// 
+///
 /// Example:
 /// ```dart
 /// final firstThree = await getFirstNSolutions(

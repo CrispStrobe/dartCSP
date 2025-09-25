@@ -71,7 +71,8 @@ Future<void> practicalApplicationsExample() async {
 
 /// Make change example - find all ways to make $1.00
 Future<void> makeChangeExample() async {
-  print('   3a. Make Change: All ways to make \$1.00 with quarters, dimes, nickels');
+  print(
+      '   3a. Make Change: All ways to make \$1.00 with quarters, dimes, nickels');
 
   final p = Problem();
   // Q = quarters (25¢), D = dimes (10¢), N = nickels (5¢)
@@ -125,16 +126,18 @@ Future<void> miniMagicSquareExample() async {
 
 /// Resource allocation with multiple valid scenarios
 Future<void> resourceAllocationExample() async {
-  print('   3c. Resource Allocation: All ways to distribute 10 units among 3 teams');
-  print('       Each team needs at least 2 units, Team A needs at least as much as Team B');
+  print(
+      '   3c. Resource Allocation: All ways to distribute 10 units among 3 teams');
+  print(
+      '       Each team needs at least 2 units, Team A needs at least as much as Team B');
 
   final p = Problem();
   p.addVariables(['TeamA', 'TeamB', 'TeamC'], [2, 3, 4, 5, 6]);
 
   p.addStringConstraints([
     'TeamA + TeamB + TeamC == 10', // Total budget
-    'TeamA >= TeamB',               // Team A priority
-    'TeamA >= 2',                   // Minimum allocations
+    'TeamA >= TeamB', // Team A priority
+    'TeamA >= 2', // Minimum allocations
     'TeamB >= 2',
     'TeamC >= 2',
   ]);
@@ -177,10 +180,13 @@ Future<void> performanceComparisonExample() async {
   final count = await p.countSolutions();
   stopwatch3.stop();
 
-  print('   First solution: $firstSolution (${stopwatch1.elapsedMilliseconds}ms)');
-  print('   All solutions: ${allSolutions.length} found (${stopwatch2.elapsedMilliseconds}ms)');
+  print(
+      '   First solution: $firstSolution (${stopwatch1.elapsedMilliseconds}ms)');
+  print(
+      '   All solutions: ${allSolutions.length} found (${stopwatch2.elapsedMilliseconds}ms)');
   print('   Count solutions: $count (${stopwatch3.elapsedMilliseconds}ms)');
-  print('   Memory usage: getAllSolutions() stores all, countSolutions() uses O(1) memory');
+  print(
+      '   Memory usage: getAllSolutions() stores all, countSolutions() uses O(1) memory');
   print('');
 }
 
@@ -191,37 +197,47 @@ Future<void> advancedConvenienceFunctionsExample() async {
   // Using top-level convenience functions
   print('   5a. Using solveAllProblems() convenience function:');
   final solutions1 = <Map<String, dynamic>>[];
-  await for (final solution in solveAllProblems(
-    variables: {'A': [1, 2, 3], 'B': [1, 2, 3]},
-    constraints: ['A < B']
-  )) {
+  await for (final solution in solveAllProblems(variables: {
+    'A': [1, 2, 3],
+    'B': [1, 2, 3]
+  }, constraints: [
+    'A < B'
+  ])) {
     solutions1.add(solution);
   }
-  print('       Found ${solutions1.length} solutions using convenience function');
+  print(
+      '       Found ${solutions1.length} solutions using convenience function');
 
   // Count without creating Problem object
   print('   5b. Using countAllSolutions() convenience function:');
-  final count = await countAllSolutions(
-    variables: {'X': [1, 2, 3, 4], 'Y': [1, 2, 3, 4]},
-    constraints: ['X != Y']
-  );
+  final count = await countAllSolutions(variables: {
+    'X': [1, 2, 3, 4],
+    'Y': [1, 2, 3, 4]
+  }, constraints: [
+    'X != Y'
+  ]);
   print('       Problem has $count solutions');
 
   // Check for uniqueness
   print('   5c. Using hasMultipleSolutions() convenience function:');
   final hasMultiple = await hasMultipleSolutions(
-    variables: {'P': [1], 'Q': [2]}, // Only one possible solution
-    constraints: ['P < Q']
-  );
+      variables: {
+        'P': [1],
+        'Q': [2]
+      }, // Only one possible solution
+      constraints: [
+        'P < Q'
+      ]);
   print('       Has multiple solutions: $hasMultiple');
 
   // Get first few efficiently
   print('   5d. Using getFirstNSolutions() convenience function:');
-  final firstTwo = await getFirstNSolutions(
-    n: 2,
-    variables: {'A': [1, 2, 3, 4], 'B': [1, 2, 3, 4]},
-    constraints: ['A > B']
-  );
+  final firstTwo = await getFirstNSolutions(n: 2, variables: {
+    'A': [1, 2, 3, 4],
+    'B': [1, 2, 3, 4]
+  }, constraints: [
+    'A > B'
+  ]);
   print('       First 2 solutions: $firstTwo');
 
   print('');
@@ -282,10 +298,10 @@ Future<void> completeWorkflowExample() async {
 
   // Constraints
   p.addStringConstraints([
-    'Math != Science',         // Different times
+    'Math != Science', // Different times
     'Math != English',
     'Science != English',
-    'Math < Science',         // Math must be before Science
+    'Math < Science', // Math must be before Science
   ]);
 
   // Step 1: Check if problem has solutions
@@ -305,21 +321,31 @@ Future<void> completeWorkflowExample() async {
   print('   ✓ Total solutions available: $count');
 
   // Step 4: Analyze all solutions
-  if (count <= 20) { // Only if reasonable number
+  if (count <= 20) {
+    // Only if reasonable number
     final allSolutions = await p.getAllSolutions();
 
     print('   ✓ All scheduling options:');
     for (int i = 0; i < allSolutions.length; i++) {
       final solution = allSolutions[i];
-      print('     Option ${i+1}: Math@${solution['Math']}, Science@${solution['Science']}, English@${solution['English']}');
+      print(
+          '     Option ${i + 1}: Math@${solution['Math']}, Science@${solution['Science']}, English@${solution['English']}');
     }
 
     // Find optimal solution (e.g., minimize latest class time)
     var bestSolution = allSolutions.first;
-    var minLatestTime = [bestSolution['Math'], bestSolution['Science'], bestSolution['English']].reduce((a, b) => a > b ? a : b);
+    var minLatestTime = [
+      bestSolution['Math'],
+      bestSolution['Science'],
+      bestSolution['English']
+    ].reduce((a, b) => a > b ? a : b);
 
     for (final solution in allSolutions) {
-      final latestTime = [solution['Math'], solution['Science'], solution['English']].reduce((a, b) => a > b ? a : b);
+      final latestTime = [
+        solution['Math'],
+        solution['Science'],
+        solution['English']
+      ].reduce((a, b) => a > b ? a : b);
       if (latestTime < minLatestTime) {
         minLatestTime = latestTime;
         bestSolution = solution;

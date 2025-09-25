@@ -28,16 +28,22 @@ import 'package:dart_csp/dart_csp.dart';
 class PuzzleConfig {
   /// The size of the N x N grid.
   int gridN;
+
   /// The minimum possible value for a number in a cell.
   int minN;
+
   /// The maximum possible value for a number in a cell.
   int maxN;
+
   /// The list of mathematical operators allowed in the puzzle.
   List<String> ops;
+
   /// The maximum number of attempts to generate a solvable puzzle layout.
   int maxAttempts;
+
   /// The desired number of pre-filled cells (clues) in the puzzle.
   int numClues;
+
   /// A flag to enable or disable verbose logging.
   bool verbose;
 
@@ -185,8 +191,8 @@ class PuzzleGenerator {
       Map<String, List<List<String>>> ops, Map<String, int> clues) {
     final variables = <String, List<dynamic>>{};
     final naryConstraints = <NaryConstraint>[];
-    final fullDomain =
-        List<int>.generate(config.maxN - config.minN + 1, (i) => i + config.minN);
+    final fullDomain = List<int>.generate(
+        config.maxN - config.minN + 1, (i) => i + config.minN);
 
     for (int r = 0; r < config.gridN; r++) {
       for (int c = 0; c < config.gridN; c++) {
@@ -225,8 +231,8 @@ class PuzzleGenerator {
   Problem buildPuzzleConstraintsNewWay(
       Map<String, List<List<String>>> ops, Map<String, int> clues) {
     final p = Problem();
-    final fullDomain =
-        List<int>.generate(config.maxN - config.minN + 1, (i) => i + config.minN);
+    final fullDomain = List<int>.generate(
+        config.maxN - config.minN + 1, (i) => i + config.minN);
 
     for (int r = 0; r < config.gridN; r++) {
       for (int c = 0; c < config.gridN; c++) {
@@ -296,7 +302,8 @@ class PuzzleGenerator {
 
   Future<void> generate() async {
     print('\n--- Generating ${config.gridN}x${config.gridN} Puzzle ---');
-    print('(Range: ${config.minN}-${config.maxN}, Ops: [${config.ops.join(', ')}])');
+    print(
+        '(Range: ${config.minN}-${config.maxN}, Ops: [${config.ops.join(', ')}])');
     if (config.numClues > 0) {
       print('(Seeding with up to ${config.numClues} random clues)');
     }
@@ -308,12 +315,14 @@ class PuzzleGenerator {
       final opLayout = {'rows': <List<String>>[], 'cols': <List<String>>[]};
       final opDetails = <String, String>{};
       for (int r = 0; r < config.gridN; r++) {
-        final ops = List.generate(config.gridN - 2, (_) => randChoice(config.ops));
+        final ops =
+            List.generate(config.gridN - 2, (_) => randChoice(config.ops));
         opLayout['rows']!.add(ops);
         ops.asMap().forEach((i, op) => opDetails[opId(r, null, 'row', i)] = op);
       }
       for (int c = 0; c < config.gridN; c++) {
-        final ops = List.generate(config.gridN - 2, (_) => randChoice(config.ops));
+        final ops =
+            List.generate(config.gridN - 2, (_) => randChoice(config.ops));
         opLayout['cols']!.add(ops);
         ops.asMap().forEach((i, op) => opDetails[opId(null, c, 'col', i)] = op);
       }
@@ -360,13 +369,15 @@ class PuzzleGenerator {
 
       // [Method 2: The New Way]
       print("[2] Solving with the NEW WAY (Problem Builder)...");
-      final newWayProblemBuilder = buildPuzzleConstraintsNewWay(opLayout, clues);
+      final newWayProblemBuilder =
+          buildPuzzleConstraintsNewWay(opLayout, clues);
       final newWaySolution = await newWayProblemBuilder.getSolution();
 
       // Step 6: Report the outcome.
       // The solution from both methods should be identical.
       if (oldWaySolution != 'FAILURE') {
-        print("\n✅ SUCCESS! Both methods found a solution for the layout above:");
+        print(
+            "\n✅ SUCCESS! Both methods found a solution for the layout above:");
         print(asciiGrid(oldWaySolution, opDetails, config.gridN));
         return; // Exit successfully.
       } else {

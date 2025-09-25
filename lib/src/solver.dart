@@ -466,7 +466,8 @@ class CSP {
       final head = constraint.head;
       final tail = constraint.tail;
 
-      if (!variables.containsKey(head) || !variables.containsKey(tail)) continue;
+      if (!variables.containsKey(head) || !variables.containsKey(tail))
+        continue;
 
       bool removed = false;
       final headDomain = variables[head]!;
@@ -685,8 +686,8 @@ class CSP {
 
   /// Combines assigned and unassigned variables into a single map.
   static Map<String, List<dynamic>> _partialAssignment(
-      Map<String, List<dynamic>> assigned,
-      Map<String, List<dynamic>> unassigned) =>
+          Map<String, List<dynamic>> assigned,
+          Map<String, List<dynamic>> unassigned) =>
       {...unassigned, ...assigned};
 
   /// Validates the structure and integrity of the provided CspProblem.

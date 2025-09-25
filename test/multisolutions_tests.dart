@@ -63,16 +63,17 @@ void main() {
       // N-ary Case
       final pNary = Problem();
       pNary.addVariables(['A', 'B', 'C'], [1, 2]);
-      pNary.addAscending(['A', 'B', 'C']); // Solutions: {1,1,1}, {1,1,2}, {1,2,2}, {2,2,2}
+      pNary.addAscending(
+          ['A', 'B', 'C']); // Solutions: {1,1,1}, {1,1,2}, {1,2,2}, {2,2,2}
       expect(await pNary.countSolutions(), equals(4));
     });
 
     test('addStrictlyAscending works correctly', () async {
-        final p = Problem();
-        p.addVariables(['A', 'B', 'C'], [1, 2, 3]);
-        p.addStrictlyAscending(['A', 'B', 'C']); // Only one solution: {1,2,3}
-        expect(await p.countSolutions(), equals(1));
-        expect(await p.getSolution(), equals({'A': 1, 'B': 2, 'C': 3}));
+      final p = Problem();
+      p.addVariables(['A', 'B', 'C'], [1, 2, 3]);
+      p.addStrictlyAscending(['A', 'B', 'C']); // Only one solution: {1,2,3}
+      expect(await p.countSolutions(), equals(1));
+      expect(await p.getSolution(), equals({'A': 1, 'B': 2, 'C': 3}));
     });
   });
 
@@ -124,11 +125,12 @@ void main() {
       expect(issues, contains('Variable B has no constraints (isolated)'));
     });
 
-    test('validate() identifies empty domains by addVariable throwing an error', () {
-        final p = Problem();
-        // This test expects that addVariable itself will prevent
-        // an empty domain from ever entering the problem, which is a stronger guarantee.
-        expect(() => p.addVariable('A', []), throwsArgumentError);
+    test('validate() identifies empty domains by addVariable throwing an error',
+        () {
+      final p = Problem();
+      // This test expects that addVariable itself will prevent
+      // an empty domain from ever entering the problem, which is a stronger guarantee.
+      expect(() => p.addVariable('A', []), throwsArgumentError);
     });
 
     test('validate() warns if potentially over-constrained', () {
@@ -198,14 +200,19 @@ void main() {
   group('Min-Conflicts Solver (Robustness)', () {
     test('solves map coloring and produces a valid solution', () async {
       final p = Problem();
-      final regions = [
-        'WA', 'NT', 'SA', 'Q', 'NSW', 'V', 'T'
-      ];
+      final regions = ['WA', 'NT', 'SA', 'Q', 'NSW', 'V', 'T'];
       final colors = ['red', 'green', 'blue'];
       p.addVariables(regions, colors);
       p.addStringConstraints([
-        'WA != NT', 'WA != SA', 'NT != SA', 'NT != Q',
-        'SA != Q', 'SA != NSW', 'SA != V', 'Q != NSW', 'NSW != V'
+        'WA != NT',
+        'WA != SA',
+        'NT != SA',
+        'NT != Q',
+        'SA != Q',
+        'SA != NSW',
+        'SA != V',
+        'Q != NSW',
+        'NSW != V'
       ]);
 
       final solution = await p.solveWithMinConflicts(maxSteps: 2000);
@@ -223,7 +230,8 @@ void main() {
         expect(solution['Q'] != solution['NSW'], isTrue);
         expect(solution['NSW'] != solution['V'], isTrue);
       } else {
-        print('Min-Conflicts did not find a solution for Map Coloring in time.');
+        print(
+            'Min-Conflicts did not find a solution for Map Coloring in time.');
         expect(solution, equals('FAILURE'));
       }
     });

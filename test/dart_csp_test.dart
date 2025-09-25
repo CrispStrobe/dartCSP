@@ -397,7 +397,10 @@ void main() {
 
     test('solveAllProblems convenience function', () async {
       final stream = solveAllProblems(
-        variables: {'A': [1, 2, 3], 'B': [1, 2, 3]},
+        variables: {
+          'A': [1, 2, 3],
+          'B': [1, 2, 3]
+        },
         constraints: ['A < B'],
       );
       final solutions = await stream.toList();
@@ -406,7 +409,10 @@ void main() {
 
     test('countAllSolutions convenience function', () async {
       final count = await countAllSolutions(
-        variables: {'A': [1, 2, 3], 'B': [1, 2, 3]},
+        variables: {
+          'A': [1, 2, 3],
+          'B': [1, 2, 3]
+        },
         constraints: ['A < B'],
       );
       expect(count, equals(3));
@@ -434,9 +440,13 @@ void main() {
     });
 
     test('solveProblem with string constraints', () async {
-      final solution = await solveProblem(
-          variables: {'A': [1, 2, 3], 'B': [1, 2, 3]},
-          constraints: ['A != B', 'A + B >= 4']);
+      final solution = await solveProblem(variables: {
+        'A': [1, 2, 3],
+        'B': [1, 2, 3]
+      }, constraints: [
+        'A != B',
+        'A + B >= 4'
+      ]);
 
       expect(solution, isA<Map>());
       final s = solution as Map<String, dynamic>;
@@ -538,7 +548,6 @@ void main() {
       expect(() => p.addStringConstraint('A +++ B'),
           throwsA(isA<ConstraintParseException>()));
     });
-
   });
 
   group('Min-Conflicts Solver', () {
@@ -583,8 +592,7 @@ void main() {
             final rowDiff = (posI - posJ).abs();
             final colDiff = j - i;
             expect(rowDiff != colDiff, isTrue,
-                reason:
-                    'Diagonal conflict between Q${i + 1} and Q${j + 1}');
+                reason: 'Diagonal conflict between Q${i + 1} and Q${j + 1}');
           }
         }
       } else {
@@ -593,5 +601,4 @@ void main() {
       }
     }, timeout: Timeout(Duration(seconds: 10)));
   });
-
 }

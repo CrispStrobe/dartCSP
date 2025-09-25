@@ -1,12 +1,13 @@
 # dart_csp
 
 [![Language: Dart](https://img.shields.io/badge/language-Dart-blue.svg)](https://dart.dev/)
+[![Tests](https://img.shields.io/badge/tests-passing-brightgreen.svg)](#testing)
 
 A powerful, general-purpose library for modeling and solving Constraint Satisfaction Problems (CSPs) in Dart. Built with intelligent backtracking search, consistency-checking algorithms, and smart heuristics to efficiently solve complex logic puzzles.
 
-This library offers **two ways to define your problem**: a high-level **Problem builder** for fast and intuitive development, and a manual **CspProblem class** for direct control over the underlying structure.
+This library offers **three intuitive ways** to define constraints: **string expressions** for natural syntax, a high-level **Problem builder** for fast development, and a manual **CspProblem class** for direct control over the underlying structure.
 
-> **Note**: This project is a port and enhancement of the excellent [csp.js](https://github.com/PrajitR/jusCSP) by Prajit Ramachandran, adapted for Dart's strong typing, async capabilities, and object-oriented structure. This also enables easy use with Flutter projects.
+> **Note**: This project is originally based on a port and enhancement of the excellent [csp.js](https://github.com/PrajitR/jusCSP) by Prajit Ramachandran, adapted for Dart's strong typing, async capabilities, and object-oriented structure. This also enables easy use with Flutter projects.
 
 ## What is a Constraint Satisfaction Problem?
 
@@ -42,24 +43,46 @@ This solver goes beyond brute-force search with the following implemented algori
 - **Optimized Performance**: Built-in constraints are faster than equivalent lambda functions
 - **Extension Methods**: Fluent API methods like `addAllDifferent()` for cleaner code
 
+### String Constraint Parsing
+- **Natural Language Syntax**: Write constraints as strings like `"A + B == 10"` or `"A != B != C"`
+- **Advanced Expression Support**: Complex expressions like `"5 <= A + B <= 7"` and `"A * B + C == 15"`
+- **Variable Equations**: Support for `"A + B == C"` where one variable equals an expression of others
+- **Set Membership**: Constraints like `"A in [1, 3, 5]"` for allowed value sets
+- **Comprehensive Parser**: Handles arithmetic, comparisons, ranges, and chained operations
+
 ### Developer Features
+- **Modular Architecture**: Clean separation of concerns across multiple focused modules
+- **Comprehensive Test Suite**: Full test coverage with 100+ test cases covering all functionality
+- **Multiple APIs**: Choose between string constraints, builder pattern, or manual construction
 - **Fluent Builder API**: An intuitive Problem class to easily define your CSP
-- **Comprehensive Demo**: Complete examples showing all constraint types and problem-solving techniques
-- **Visualization Hooks**: Step-by-step callback system for demos and debugging
-- **Type Safety**: Full Dart type system integration
+- **Rich Examples**: Complete demo showcasing all constraint types and problem-solving techniques
+- **Debugging Tools**: Problem validation, summary printing, and step-by-step visualization
+- **Type Safety**: Full Dart type system integration with proper error handling
 - **Async Support**: Non-blocking solving with `Future`-based API
 
 ## Quick Start
 
 ### 1. Installation
 
-Add `dart_csp.dart` to your project (e.g., in your `lib` directory) and import it:
+Add this package to your `pubspec.yaml`:
 
-```dart
-import 'dart_csp.dart';
+```yaml
+dependencies:
+  dart_csp: ^2.0.0
 ```
 
-### 2. Your First Problem - Map Coloring
+Then run:
+```bash
+dart pub get
+```
+
+### 2. Import and Use
+
+```dart
+import 'package:dart_csp/dart_csp.dart';
+```
+
+### 3. Your First Problem - Map Coloring
 
 ```dart
 Future<void> main() async {
@@ -68,23 +91,30 @@ Future<void> main() async {
   // Variables: Australian states, Domain: Colors
   p.addVariables(['WA', 'NT', 'SA', 'Q', 'NSW', 'V'], ['red', 'green', 'blue']);
   
-  // Constraints: Adjacent states must have different colors
-  p.addAllDifferent(['SA', 'WA']); // Using built-in constraint
-  p.addAllDifferent(['SA', 'NT']);
-  p.addAllDifferent(['SA', 'Q']);
-  // ... more constraints
+  // Constraints using string expressions (easiest way!)
+  p.addStringConstraints([
+    'WA != SA',
+    'NT != SA', 
+    'Q != SA',
+    'NSW != SA',
+    'V != SA',
+    'WA != NT',
+    'NT != Q',
+    'Q != NSW',
+    'NSW != V'
+  ]);
   
   final solution = await p.getSolution();
   print(solution); // {WA: red, NT: blue, SA: green, ...}
 }
 ```
 
-### 3. Run the Comprehensive Demo
+### 4. Run the Comprehensive Demo
 
 The library includes a complete demo showcasing all features:
 
 ```bash
-dart run demo.dart
+dart run example/demo.dart
 ```
 
 This runs 11 different constraint satisfaction problems demonstrating:
@@ -98,9 +128,9 @@ This runs 11 different constraint satisfaction problems demonstrating:
 
 ## How to Use dart_csp
 
-### Method 1: The Problem Builder (Recommended)
+### Method 1: String Constraints (Recommended)
 
-The Problem class provides a clean, step-by-step builder pattern with built-in constraints.
+The most intuitive way - write constraints as natural expressions:
 
 ```dart
 final p = Problem();
@@ -108,21 +138,59 @@ final p = Problem();
 // 1. Add variables and domains
 p.addVariables(['A', 'B', 'C'], [1, 2, 3, 4, 5]);
 
-// 2. Use built-in constraints (recommended)
+// 2. Add constraints using natural string syntax
+p.addStringConstraints([
+  'A != B != C',           // All different (chained)
+  'A + B == 7',            // Exact sum
+  'A < B < C',             // Strict ordering
+  '5 <= A + B <= 8',       // Range constraint
+  'A * B >= 6',            // Minimum product
+  'A + B == C'             // Variable equation
+]);
+
+// 3. Solve
+final solution = await p.getSolution();
+```
+
+**Supported String Constraint Syntax:**
+
+| Pattern | Description | Example |
+|---------|-------------|---------|
+| **Equality/Inequality** | Variable comparisons | `"A == B"`, `"A != B"` |
+| **Chained Operations** | Multiple comparisons | `"A != B != C"`, `"A < B < C"` |
+| **Arithmetic Equality** | Exact sums/products | `"A + B == 10"`, `"A * B == 12"` |
+| **Arithmetic Inequality** | Min/max constraints | `"A + B >= 5"`, `"A * B <= 20"` |
+| **Range Constraints** | Bounded values | `"5 <= A + B <= 10"` |
+| **Variable Equations** | Inter-variable relations | `"A + B == C"`, `"A * B == D"` |
+| **Complex Expressions** | Mixed operations | `"2*A + 3*B == 15"`, `"A*B + C >= 10"` |
+| **Set Membership** | Allowed values | `"A in [1, 3, 5]"` |
+| **Single Variable** | Constant comparisons | `"A > 5"`, `"B != 3"` |
+
+### Method 2: The Problem Builder
+
+The Problem class provides a clean, step-by-step builder pattern with built-in constraints:
+
+```dart
+final p = Problem();
+
+// 1. Add variables and domains
+p.addVariables(['A', 'B', 'C'], [1, 2, 3, 4, 5]);
+
+// 2. Use built-in constraints (highly optimized)
 p.addAllDifferent(['A', 'B', 'C']);      // All different values
 p.addExactSum(['A', 'B'], 7);            // A + B = 7
 p.addAscending(['A', 'B', 'C']);         // A ≤ B ≤ C
 
-// 3. Or define custom constraints
+// 3. Or define custom constraints with lambda functions
 p.addConstraint(['A', 'B'], (a, b) => a * b <= 10);
 
 // 4. Solve
 final solution = await p.getSolution();
 ```
 
-### Method 2: Manual CspProblem Construction
+### Method 3: Manual CspProblem Construction
 
-Direct access to underlying data structures for programmatic generation.
+Direct access to underlying data structures for programmatic generation:
 
 ```dart
 var variables = <String, List<dynamic>>{
@@ -211,9 +279,34 @@ p.addConstraint(['A', 'B', 'C'], (assignment) {
 });
 ```
 
+## Convenience Functions
+
+For quick problem solving, use the top-level convenience functions:
+
+```dart
+// Quick all-different problem
+final solution1 = await solveAllDifferent(
+  variables: ['A', 'B', 'C'],
+  domain: [1, 2, 3]
+);
+
+// Quick sum problem  
+final solution2 = await solveSumProblem(
+  variables: ['X', 'Y'],
+  domain: [1, 2, 3, 4, 5],
+  targetSum: 7
+);
+
+// General string constraint problem
+final solution3 = await solveProblem(
+  variables: {'A': [1, 2, 3, 4], 'B': [1, 2, 3, 4]},
+  constraints: ['A != B', 'A + B >= 5']
+);
+```
+
 ## Real-World Examples
 
-### Sudoku Solver
+### Sudoku Solver with String Constraints
 
 ```dart
 Future<void> solveSudoku(List<List<int>> puzzle) async {
@@ -231,19 +324,20 @@ Future<void> solveSudoku(List<List<int>> puzzle) async {
     }
   }
   
-  // Row constraints (all different)
+  // Add all-different constraints using built-in methods
+  // Rows
   for (int r = 0; r < 9; r++) {
     final row = List.generate(9, (c) => '$r-$c');
     p.addAllDifferent(row);
   }
   
-  // Column constraints
+  // Columns
   for (int c = 0; c < 9; c++) {
     final col = List.generate(9, (r) => '$r-$c');
     p.addAllDifferent(col);
   }
   
-  // 3x3 block constraints
+  // 3x3 blocks
   for (int br in [0, 3, 6]) {
     for (int bc in [0, 3, 6]) {
       final block = <String>[];
@@ -261,39 +355,40 @@ Future<void> solveSudoku(List<List<int>> puzzle) async {
 }
 ```
 
-### Magic Square Generator
+### Magic Square with String Constraints
 
 ```dart
 Future<void> generateMagicSquare() async {
   final p = Problem();
   
   // 3x3 grid with numbers 1-9
-  final positions = ['00', '01', '02', '10', '11', '12', '20', '21', '22'];
+  final positions = ['A1', 'A2', 'A3', 'B1', 'B2', 'B3', 'C1', 'C2', 'C3'];
   p.addVariables(positions, [1, 2, 3, 4, 5, 6, 7, 8, 9]);
   
   // Each number appears exactly once
   p.addAllDifferent(positions);
   
-  // All rows sum to 15
-  p.addExactSum(['00', '01', '02'], 15);
-  p.addExactSum(['10', '11', '12'], 15);  
-  p.addExactSum(['20', '21', '22'], 15);
-  
-  // All columns sum to 15
-  p.addExactSum(['00', '10', '20'], 15);
-  p.addExactSum(['01', '11', '21'], 15);
-  p.addExactSum(['02', '12', '22'], 15);
-  
-  // Diagonals sum to 15
-  p.addExactSum(['00', '11', '22'], 15);
-  p.addExactSum(['02', '11', '20'], 15);
+  // All rows, columns, and diagonals sum to 15 using string constraints
+  p.addStringConstraints([
+    // Rows
+    'A1 + A2 + A3 == 15',
+    'B1 + B2 + B3 == 15', 
+    'C1 + C2 + C3 == 15',
+    // Columns
+    'A1 + B1 + C1 == 15',
+    'A2 + B2 + C2 == 15',
+    'A3 + B3 + C3 == 15',
+    // Diagonals
+    'A1 + B2 + C3 == 15',
+    'A3 + B2 + C1 == 15'
+  ]);
   
   final solution = await p.getSolution();
   // Display magic square...
 }
 ```
 
-### Resource Allocation
+### Resource Allocation with Mixed Constraints
 
 ```dart
 Future<void> allocateResources() async {
@@ -302,11 +397,14 @@ Future<void> allocateResources() async {
   // Teams get 3-10 resources each  
   p.addVariables(['TeamA', 'TeamB', 'TeamC'], [3, 4, 5, 6, 7, 8, 9, 10]);
   
-  // Total budget constraint
-  p.addExactSum(['TeamA', 'TeamB', 'TeamC'], 20);
-  
-  // Priority: TeamA gets at least as much as TeamB
-  p.addConstraint(['TeamA', 'TeamB'], (a, b) => a >= b);
+  // Use string constraints for clarity
+  p.addStringConstraints([
+    'TeamA + TeamB + TeamC == 20',  // Total budget
+    'TeamA >= TeamB',               // Priority constraint
+    'TeamA >= 3',                   // Minimum allocation
+    'TeamB >= 3',
+    'TeamC >= 3'
+  ]);
   
   final solution = await p.getSolution();
   print('Team A: ${solution['TeamA']} resources');
@@ -315,9 +413,63 @@ Future<void> allocateResources() async {
 }
 ```
 
+## Testing
+
+The library includes a comprehensive test suite covering its basic functionality:
+
+```bash
+# Run all tests
+dart test
+
+# Run tests with coverage
+dart pub global activate coverage
+dart pub global run coverage:test_with_coverage
+
+# Run specific test groups
+dart test test/dart_csp_test.dart -n "Basic Problem Creation"
+dart test test/dart_csp_test.dart -n "String Constraints"
+```
+
+### Test Coverage
+
+The test suite includes test cases covering:
+
+- **Basic Problem Creation**: Variable addition, domain validation, constraint setup
+- **Binary Constraints**: Two-variable relationships and consistency
+- **N-ary Constraints**: Multi-variable constraints and complex relationships  
+- **String Constraints**: All parsing scenarios and edge cases
+- **Built-in Constraints**: Every constraint factory function and extension method
+- **Complex Problems**: Magic squares, N-Queens, Sudoku, map coloring
+- **Convenience Functions**: Top-level utility functions
+- **Failure Cases**: Over-constrained and unsolvable problems
+- **Problem Utilities**: Validation, debugging, and introspection
+- **Edge Cases**: Malformed constraints, missing variables, empty domains
+
 ## Advanced Usage
 
-### Visualization and Debugging
+### Debugging and Problem Validation
+
+```dart
+final p = Problem();
+p.addVariables(['A', 'B', 'C'], [1, 2, 3]);
+p.addStringConstraint('A != B');
+
+// Print problem summary
+p.printSummary();
+
+// Validate problem for common issues
+final issues = p.validate();
+if (issues.isEmpty) {
+  print('Problem validation: ✓ No issues found');
+} else {
+  print('Problem validation issues:');
+  for (final issue in issues) {
+    print('  - $issue');
+  }
+}
+```
+
+### Visualization and Monitoring
 
 Monitor the solver's progress with callback functions:
 
@@ -343,23 +495,29 @@ final solution = await p.getSolution();
 
 ### Performance Optimization
 
-1. **Use Built-in Constraints**: `addAllDifferent()` is faster than custom lambdas
-2. **Restrict Domains Early**: Smaller initial domains = faster solving
-3. **Strategic Constraint Ordering**: Add most constraining constraints first
-4. **Consider Clues**: For puzzles, pre-fill strategic positions to reduce search space
+1. **Use String Constraints**: Often more readable and almost just as fast as built-ins
+2. **Use Built-in Constraints**: `addAllDifferent()` is faster than custom lambdas
+3. **Restrict Domains Early**: Smaller initial domains = faster solving
+4. **Strategic Constraint Ordering**: Add most constraining constraints first
+5. **Consider Clues**: For puzzles, pre-fill strategic positions to reduce search space
 
 ```dart
-// Performance example: Magic square with clue
+// Performance example: Magic square with strategic clue
 final p = Problem();
 
 // Add strategic clue to dramatically reduce search space
-p.addVariable('11', [5]); // Center is always 5
+p.addVariable('B2', [5]); // Center is always 5 in 3x3 magic square
 
 // Remaining variables exclude the clue value  
-final positions = ['00', '01', '02', '10', '12', '20', '21', '22'];
-p.addVariables(positions, [1, 2, 3, 4, 6, 7, 8, 9]); // No 5
+final otherPositions = ['A1', 'A2', 'A3', 'B1', 'B3', 'C1', 'C2', 'C3'];
+p.addVariables(otherPositions, [1, 2, 3, 4, 6, 7, 8, 9]); // No 5
 
-// ... add constraints ...
+// ... add constraints using string syntax ...
+p.addStringConstraints([
+  'A1 + A2 + A3 == 15',
+  'B1 + B2 + B3 == 15', // B2 is constrained to [5]
+  // ... more constraints
+]);
 ```
 
 ## API Reference
@@ -371,6 +529,8 @@ p.addVariables(positions, [1, 2, 3, 4, 6, 7, 8, 9]); // No 5
 | `addVariable()` | `String name`, `List<dynamic> domain` | Adds a single variable with its domain |
 | `addVariables()` | `List<String> names`, `List<dynamic> domain` | Adds multiple variables sharing the same domain |
 | `addConstraint()` | `List<String> vars`, `Function predicate` | Adds custom binary or n-ary constraint |
+| `addStringConstraint()` | `String constraint` | Adds constraint from string expression |
+| `addStringConstraints()` | `List<String> constraints` | Adds multiple string constraints |
 | `setOptions()` | `int? timeStep`, `CspCallback? callback` | Sets visualization parameters |
 | `getSolution()` | (none) | Builds and solves the problem |
 
@@ -388,6 +548,17 @@ p.addVariables(positions, [1, 2, 3, 4, 6, 7, 8, 9]); // No 5
 | `addAscending()` | `List<String> variables` | Variables in non-decreasing order |
 | `addStrictlyAscending()` | `List<String> variables` | Variables in strictly increasing order |
 | `addDescending()` | `List<String> variables` | Variables in non-increasing order |
+
+### Problem Class - Debugging Extensions
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `printSummary()` | `void` | Prints problem overview to console |
+| `validate()` | `List<String>` | Returns list of potential issues |
+| `copy()` | `Problem` | Creates a deep copy of the problem |
+| `clear()` | `void` | Removes all variables and constraints |
+| `variableCount` | `int` | Number of variables in problem |
+| `constraintCount` | `int` | Number of constraints in problem |
 
 ### Built-in Constraint Factory Functions
 
@@ -418,6 +589,14 @@ p.addVariables(positions, [1, 2, 3, 4, 6, 7, 8, 9]); // No 5
 - `descendingInOrder(List<String> order)` → `NaryPredicate`
 
 *Note: Binary versions (suffix `Binary`) are available for 2-variable optimizations.*
+
+### Convenience Functions
+
+| Function | Parameters | Description |
+|----------|------------|-------------|
+| `solveProblem()` | `Map<String, List<dynamic>> variables`, `List<String> constraints` | Solve with string constraints |
+| `solveAllDifferent()` | `List<String> variables`, `List<dynamic> domain` | Quick all-different solver |  
+| `solveSumProblem()` | `List<String> variables`, `List<dynamic> domain`, `num targetSum` | Quick sum constraint solver |
 
 ### CspProblem Class (Manual Construction)
 
@@ -459,12 +638,35 @@ typedef CspCallback = void Function(
 );
 ```
 
+## Project Structure
+
+The library is organized into focused, modular components:
+
+```
+lib/
+├── dart_csp.dart                 # Main library export and convenience functions
+└── src/
+    ├── types.dart                # Core type definitions and interfaces  
+    ├── solver.dart               # CSP solver with backtracking, AC-3, GAC
+    ├── problem.dart              # Problem builder class and extensions
+    ├── builtin_constraints.dart  # Optimized constraint factory functions
+    └── constraint_parser.dart    # String constraint parsing engine
+
+example/
+├── demo.dart                     # Comprehensive demo of all features
+├── usage_examples.dart           # Usage examples for the APIs
+└── gencw.dart                    # Advanced arithmetic square puzzle generator
+
+test/
+└── dart_csp_test.dart           # Comprehensive test suite
+```
+
 ## Running the Demo
 
-The comprehensive demo (`demo.dart`) showcases all library features with 11 different problems:
+The comprehensive demo (`example/demo.dart`) showcases all library features with 11 different problems:
 
 ```bash
-dart run demo.dart
+dart run example/demo.dart
 ```
 
 ### Demo Contents
@@ -489,25 +691,31 @@ Each demo includes:
 
 ## Performance Tips
 
-1. **Use Built-in Constraints**: Pre-optimized functions are faster than equivalent lambdas
-2. **Strategic Domain Reduction**: Limit initial domains as much as possible
-3. **Constraint Ordering**: Add most restrictive constraints first
-4. **Choose Appropriate Constraint Types**: Use binary constraints for 2-variable rules
-5. **Consider Problem Structure**: Add strategic "clues" to reduce search space
+1. **Use String Constraints**: Natural syntax with good performance
+2. **Use Built-in Constraints**: Pre-optimized functions are faster than equivalent lambdas
+3. **Strategic Domain Reduction**: Limit initial domains as much as possible
+4. **Constraint Ordering**: Add most restrictive constraints first
+5. **Choose Appropriate Constraint Types**: Use binary constraints for 2-variable rules
+6. **Consider Problem Structure**: Add strategic "clues" to reduce search space
 
 ### Performance Comparison
 
 ```dart
-// Slower: Custom lambda
+// Readable and fast: String constraints  
+p.addStringConstraints(['A != B != C', 'A + B + C == 10']);
+
+// Also fast: Built-in constraints
+p.addAllDifferent(['A', 'B', 'C']);
+p.addExactSum(['A', 'B', 'C'], 10);
+
+// Slower but flexible: Custom lambda
 p.addConstraint(['A', 'B', 'C'], (assignment) {
   final values = assignment.values.toSet();
-  return values.length == assignment.length;
+  return values.length == assignment.length && 
+         values.fold<num>(0, (sum, v) => sum + v) == 10;
 });
 
-// Faster: Built-in constraint
-p.addAllDifferent(['A', 'B', 'C']);
-
-// Even faster: Binary constraint for 2 variables
+// Fastest for 2 variables: Binary constraint
 p.addConstraint(['A', 'B'], allDifferentBinary());
 ```
 
@@ -518,10 +726,10 @@ Contributions are welcome! This library builds upon the excellent foundation of 
 ### Development Setup
 
 1. Clone the repository
-2. Run the demo: `dart run demo.dart`
-3. Run tests: `dart test` (if test suite exists)
-4. Add new constraint types to the built-in library
-5. Update documentation and examples
+2. Install dependencies: `dart pub get`
+3. Run tests: `dart test`
+4. Run the demo: `dart run example/demo.dart`
+5. Run examples: `dart run example/usage_examples.dart`
 
 ## License
 

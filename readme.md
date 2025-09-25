@@ -24,7 +24,7 @@ A CSP is a mathematical problem where you need to find values for variables that
 
 ## Features
 
-This solver goes beyond brute-force search with sophisticated AI algorithms:
+This solver goes beyond brute-force search with a number of algorithms:
 
 ### Core Algorithms
 - **Backtracking Search**: Intelligent depth-first search that backtracks when constraints are violated
@@ -44,7 +44,7 @@ This solver goes beyond brute-force search with sophisticated AI algorithms:
 
 ### 1. Installation
 
-Add `dart_csp.dart` to your project's `lib` directory and import it:
+Add `dart_csp.dart` to your project('s `lib` directory) and import it:
 
 ```dart
 import 'dart_csp.dart';

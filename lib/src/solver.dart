@@ -655,7 +655,7 @@ class CSP {
       if (res == _failure || _anyEmpty(res as Map<String, List<dynamic>>)) {
         scores[val] = double.negativeInfinity; // This value leads to failure.
       } else {
-        scores[val] = (res as Map<String, List<dynamic>>)
+        scores[val] = res // scores[val] = (res as Map<String, List<dynamic>>)
             .values
             .fold<int>(0, (sum, d) => sum + d.length);
       }
@@ -694,11 +694,11 @@ class CSP {
   static void _validateProblem(CspProblem csp) {
     final varsSet = csp.variables.keys.toSet();
 
-    csp.variables.forEach((v, domain) {
+    /* csp.variables.forEach((v, domain) {
       if (domain is! List) {
         throw ArgumentError('Variable "$v" domain is not a list');
       }
-    });
+    }); */
 
     for (final c in csp.constraints) {
       if (!varsSet.contains(c.head)) {

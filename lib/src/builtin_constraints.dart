@@ -1,4 +1,4 @@
-/// lib/src/builtin_constraints.dart
+// lib/src/builtin_constraints.dart
 
 /// Built-in constraint factory functions for common CSP constraint types.
 /// These are much faster than generic lambda functions and provide better

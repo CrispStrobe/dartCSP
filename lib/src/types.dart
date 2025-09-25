@@ -80,8 +80,8 @@ class CspProblem {
 
   CspProblem({
     required this.variables,
-    this.constraints = const [],
-    this.naryConstraints = const [],
+    this.constraints = const <BinaryConstraint>[],
+    this.naryConstraints = const <NaryConstraint>[],
     this.timeStep = 1,
     this.cb,
   });

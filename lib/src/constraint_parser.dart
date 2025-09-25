@@ -64,7 +64,7 @@ class VariableSumConstraint extends VariableConstraint {
         sum += (value as num) * multiplier;
       }
 
-      return sum == targetValue;
+      return sum == (targetValue as num);
     };
   }
 }
@@ -84,10 +84,10 @@ class VariableProductConstraint extends VariableConstraint {
       for (final varName in sourceVariables) {
         final value = assignment[varName];
         if (value == null) return true;
-        product *= value;
+        product *= (value as num);
       }
 
-      return product == targetValue;
+      return product == (targetValue as num);
     };
   }
 }
@@ -160,7 +160,7 @@ class ExpressionEvaluator {
 
     // Single variable or number
     if (variables.containsKey(expression)) {
-      return variables[expression];
+      return variables[expression] as num;
     }
 
     return double.tryParse(expression) ?? 0;
@@ -172,7 +172,7 @@ class ExpressionEvaluator {
 
     // Check if it's a variable
     if (variables.containsKey(expression)) {
-      return variables[expression];
+      return variables[expression] as num;
     }
 
     // Check if it's a number
@@ -475,16 +475,16 @@ class ConstraintParser {
           BinaryPredicate predicate;
           switch (op) {
             case '>':
-              predicate = (dynamic a, dynamic b) => a > b;
+              predicate = (dynamic a, dynamic b) => (a as num) > (b as num);
               break;
             case '>=':
-              predicate = (dynamic a, dynamic b) => a >= b;
+              predicate = (dynamic a, dynamic b) => (a as num) >= (b as num);
               break;
             case '<':
-              predicate = (dynamic a, dynamic b) => a < b;
+              predicate = (dynamic a, dynamic b) => (a as num) < (b as num);
               break;
             case '<=':
-              predicate = (dynamic a, dynamic b) => a <= b;
+              predicate = (dynamic a, dynamic b) => (a as num) <= (b as num);
               break;
             default:
               continue;
@@ -526,37 +526,39 @@ class ConstraintParser {
           case '==':
             predicate = (Map<String, dynamic> assignment) {
               final value = assignment[variable];
-              return value != null && (value - constant).abs() < 0.0001;
+              return value != null &&
+                  ((value as num) - constant).abs() < 0.0001;
             };
             break;
           case '!=':
             predicate = (Map<String, dynamic> assignment) {
               final value = assignment[variable];
-              return value != null && (value - constant).abs() >= 0.0001;
+              return value != null &&
+                  ((value as num) - constant).abs() >= 0.0001;
             };
             break;
           case '>':
             predicate = (Map<String, dynamic> assignment) {
               final value = assignment[variable];
-              return value != null && value > constant;
+              return value != null && (value as num) > constant;
             };
             break;
           case '>=':
             predicate = (Map<String, dynamic> assignment) {
               final value = assignment[variable];
-              return value != null && value >= constant;
+              return value != null && (value as num) >= constant;
             };
             break;
           case '<':
             predicate = (Map<String, dynamic> assignment) {
               final value = assignment[variable];
-              return value != null && value < constant;
+              return value != null && (value as num) < constant;
             };
             break;
           case '<=':
             predicate = (Map<String, dynamic> assignment) {
               final value = assignment[variable];
-              return value != null && value <= constant;
+              return value != null && (value as num) <= constant;
             };
             break;
           default:

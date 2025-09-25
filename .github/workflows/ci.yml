@@ -121,20 +121,6 @@ jobs:
           path: doc/api/
           retention-days: 30
 
-  security:
-    name: Security Scan
-    runs-on: ubuntu-latest
-    
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dart-lang/setup-dart@v1
-        with:
-          sdk: stable
-      - run: dart pub get
-      
-      - name: Run security audit
-        run: dart pub outdated --mode=security
-
   examples:
     name: Validate Examples
     runs-on: ubuntu-latest

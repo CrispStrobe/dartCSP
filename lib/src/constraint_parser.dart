@@ -334,7 +334,7 @@ class ConstraintParser {
     for (final match in allVariableTokens) {
       final token = match.group(0)!;
       // Skip if it's a reserved word or number-like
-      if (!['in', 'and', 'or'].contains(token.toLowerCase()) && 
+      if (!['in', 'not', 'and', 'or'].contains(token.toLowerCase()) && 
           double.tryParse(token) == null) {
         if (!variables.contains(token)) {
           variables.add(token);
@@ -675,25 +675,45 @@ class ConstraintParser {
   }
   
   static ParsedConstraint? _parseSetConstraint(String constraint, List<String> variables) {
-    final inSetMatch = RegExp(r'^([A-Za-z_][A-Za-z0-9_]*)\s+in\s+\[(.+?)\]$').firstMatch(constraint);
-    if (inSetMatch == null) return null;
-    
-    final variable = inSetMatch.group(1)!;
-    final setValues = inSetMatch.group(2)!.split(',').map((s) => s.trim()).toList();
-    
-    // Convert string values to appropriate types
-    final parsedValues = <dynamic>{};
-    for (final value in setValues) {
-      final trimmed = value.replaceAll('"', '').replaceAll("'", '');
-      final number = double.tryParse(trimmed);
-      parsedValues.add(number ?? trimmed);
+    // Regex for 'not in'
+    final notInSetMatch = RegExp(r'^([A-Za-z_][A-Za-z0-9_]*)\s+not\s+in\s+\[(.+?)\]$').firstMatch(constraint);
+    if (notInSetMatch != null) {
+        final setValues = notInSetMatch.group(2)!.split(',').map((s) => s.trim()).toList();
+        final parsedValues = _parseSetValues(setValues);
+
+        return ParsedConstraint(
+            variables.length == 2 ? notInSetBinary(parsedValues) : notInSet(parsedValues),
+            variables,
+            variables.length == 2 ? ConstraintType.binary : ConstraintType.nary,
+        );
     }
-    
-    return ParsedConstraint(
-      variables.length == 2 ? inSetBinary(parsedValues) : inSet(parsedValues),
-      variables, variables.length == 2 ? ConstraintType.binary : ConstraintType.nary
-    );
+
+    // Regex for 'in'
+    final inSetMatch = RegExp(r'^([A-Za-z_][A-Za-z0-9_]*)\s+in\s+\[(.+?)\]$').firstMatch(constraint);
+    if (inSetMatch != null) {
+        final setValues = inSetMatch.group(2)!.split(',').map((s) => s.trim()).toList();
+        final parsedValues = _parseSetValues(setValues);
+
+        return ParsedConstraint(
+            variables.length == 2 ? inSetBinary(parsedValues) : inSet(parsedValues),
+            variables,
+            variables.length == 2 ? ConstraintType.binary : ConstraintType.nary,
+        );
+    }
+
+    return null;
   }
+
+  /// Helper to parse values from a set string like "[1, 2, 'hello']"
+  static Set<dynamic> _parseSetValues(List<String> stringValues) {
+        final parsedValues = <dynamic>{};
+        for (final value in stringValues) {
+            final trimmed = value.replaceAll('"', '').replaceAll("'", '');
+            final number = num.tryParse(trimmed);
+            parsedValues.add(number ?? trimmed);
+        }
+        return parsedValues;
+    }
   
   static ParsedConstraint? _parseOrderingConstraint(String constraint, List<String> variables) {
     if (constraint.contains('<') && !constraint.contains('<=') && !constraint.contains('==')) {

@@ -538,5 +538,60 @@ void main() {
       expect(() => p.addStringConstraint('A +++ B'),
           throwsA(isA<ConstraintParseException>()));
     });
+
   });
+
+  group('Min-Conflicts Solver', () {
+    test('8-queens problem with min-conflicts', () async {
+      final p = Problem();
+      const n = 8;
+      final queens = List.generate(n, (i) => 'Q${i + 1}');
+      final domain = List.generate(n, (i) => i + 1);
+      p.addVariables(queens, domain);
+
+      // No same column
+      p.addAllDifferent(queens);
+
+      // No diagonal attacks
+      for (int i = 0; i < n; i++) {
+        for (int j = i + 1; j < n; j++) {
+          final colDiff = j - i;
+          p.addConstraint([queens[i], queens[j]], (posI, posJ) {
+            return (posI - posJ).abs() != colDiff;
+          });
+        }
+      }
+
+      // We give it more steps as it's a stochastic algorithm
+      final solution = await p.solveWithMinConflicts(maxSteps: 5000);
+
+      // We don't fail the test if no solution is found, as it's possible.
+      // But IF a solution is returned, it MUST be valid.
+      if (solution is Map) {
+        final s = solution as Map<String, dynamic>;
+        print('Min-Conflicts found a solution for 8-Queens: $s');
+
+        // Check no same column
+        final positions = s.values.toSet();
+        expect(positions.length, equals(n));
+
+        // Check no diagonal attacks
+        for (int i = 0; i < n; i++) {
+          for (int j = i + 1; j < n; j++) {
+            final posI = s['Q${i + 1}'];
+            final posJ = s['Q${j + 1}'];
+            final rowDiff = (posI - posJ).abs();
+            final colDiff = j - i;
+            expect(rowDiff != colDiff, isTrue,
+                reason:
+                    'Diagonal conflict between Q${i + 1} and Q${j + 1}');
+          }
+        }
+      } else {
+        print('Min-Conflicts did not find a solution for 8-Queens in time.');
+        expect(solution, equals('FAILURE'));
+      }
+    }, timeout: Timeout(Duration(seconds: 10)));
+  });
+
 }

@@ -170,9 +170,6 @@ class Problem {
     return CSP.solveAll(problem);
   }
 
-  /// Gets all variables and their current domains
-  Map<String, List<dynamic>> get variables => Map.unmodifiable(_variables);
-
   /// Gets the number of variables in the problem
   int get variableCount => _variables.length;
 
@@ -196,6 +193,31 @@ class Problem {
     newProblem._cb = _cb;
     return newProblem;
   }
+
+  /// Solves the problem using the Min-Conflicts local search algorithm.
+  ///
+  /// This method is often faster for large problems but is not guaranteed to
+  /// find a solution even if one exists. It's a good choice when you need
+  /// *any* solution quickly, rather than a systematic search for one.
+  /// It cannot find all solutions.
+  ///
+  /// Returns a [Future] that completes with:
+  /// - A `Map<String, dynamic>` of variable assignments if a solution is found.
+  /// - The string 'FAILURE' if no solution is found within [maxSteps].
+  Future<dynamic> solveWithMinConflicts({int maxSteps = 1000}) {
+    final problem = CspProblem(
+      variables: _variables,
+      constraints: _constraints,
+      naryConstraints: _naryConstraints,
+    );
+    // Min-Conflicts doesn't support visualization callbacks in this implementation.
+    return CSP.solveWithMinConflicts(problem, maxSteps: maxSteps);
+  }
+
+  /// Gets all variables and their current domains
+  Map<String, List<dynamic>> get variables => Map.unmodifiable(_variables);
+
+
 }
 
 /// Extension methods for Problem class to make using built-in constraints easier

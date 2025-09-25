@@ -1,6 +1,7 @@
 /// Core CSP solver with backtracking, AC-3, and GAC algorithms.
 
 import 'dart:async';
+import 'dart:math'; // for randomization
 import 'types.dart';
 
 /// A static class providing the method to solve Constraint Satisfaction Problems.
@@ -10,6 +11,154 @@ class CSP {
 
   /// A counter for the number of steps taken in the search, used for the callback delay.
   static int _stepCounter = 0;
+
+  /// Solves the given CSP using the Min-Conflicts local search algorithm.
+  ///
+  /// This algorithm is suitable for finding a single solution to large problems
+  /// where systematic search like backtracking might be too slow. It is not
+  /// guaranteed to find a solution if one exists (it can get stuck in local
+  /// optima) and it cannot be used to find all solutions.
+  ///
+  /// - [csp]: The problem to solve.
+  /// - [maxSteps]: The maximum number of iterations before giving up.
+  ///
+  /// Returns a [Future] that completes with:
+  /// - A `Map<String, dynamic>` of variable assignments if a solution is found.
+  /// - The string 'FAILURE' if no solution is found within [maxSteps].
+  static Future<dynamic> solveWithMinConflicts(CspProblem csp,
+      {int maxSteps = 1000}) async {
+    final random = Random();
+
+    // 1. Generate an initial complete, random assignment.
+    final current = <String, dynamic>{};
+    csp.variables.forEach((variable, domain) {
+      current[variable] = domain[random.nextInt(domain.length)];
+    });
+
+    // Pre-build indexes for efficient conflict checking
+    final binaryIndex = _buildBinaryIndex(csp.constraints);
+    csp.naryIndex ??= _buildNaryIndex(csp.naryConstraints);
+
+    // 2. Main search loop
+    for (int i = 0; i < maxSteps; i++) {
+      final conflictedVars =
+          _getConflictedVariables(current, csp, binaryIndex, csp.naryIndex!);
+
+      // If no variables are in conflict, we have found a solution.
+      if (conflictedVars.isEmpty) {
+        return current;
+      }
+
+      // 3. Randomly select a conflicted variable.
+      final variable = conflictedVars[random.nextInt(conflictedVars.length)];
+
+      // 4. Find the value for the selected variable that minimizes conflicts.
+      dynamic minConflictValue;
+      int minConflicts = 1 << 30; // Initialize with a large number
+
+      // To break ties randomly, we collect all values with the same min score
+      var bestValues = <dynamic>[];
+
+      for (final value in csp.variables[variable]!) {
+        final conflicts = _countConflictsForVar(
+            variable, value, current, csp, binaryIndex, csp.naryIndex!);
+
+        if (conflicts < minConflicts) {
+          minConflicts = conflicts;
+          minConflictValue = value;
+          bestValues = [value];
+        } else if (conflicts == minConflicts) {
+          bestValues.add(value);
+        }
+      }
+
+      // 5. Assign the new value to the variable, picking randomly from the best options.
+      if (bestValues.isNotEmpty) {
+        current[variable] = bestValues[random.nextInt(bestValues.length)];
+      } else {
+        current[variable] = minConflictValue;
+      }
+    }
+
+    // If the loop finishes, no solution was found.
+    return _failure;
+  }
+
+  /// Builds an index mapping variables to their binary constraints for quick lookup.
+  static Map<String, List<BinaryConstraint>> _buildBinaryIndex(
+      List<BinaryConstraint> constraints) {
+    final index = <String, List<BinaryConstraint>>{};
+    for (final c in constraints) {
+      (index[c.head] ??= []).add(c);
+      (index[c.tail] ??= []).add(c);
+    }
+    return index;
+  }
+
+  /// Gets a list of all variables currently involved in a violated constraint.
+  static List<String> _getConflictedVariables(
+      Map<String, dynamic> assignment,
+      CspProblem csp,
+      Map<String, List<BinaryConstraint>> binaryIndex,
+      Map<String, List<NaryConstraint>> naryIndex) {
+    final conflicted = <String>{};
+
+    // Check all constraints
+    for (final c in csp.constraints) {
+      if (!c.predicate(assignment[c.head], assignment[c.tail])) {
+        conflicted.add(c.head);
+        conflicted.add(c.tail);
+      }
+    }
+
+    for (final c in csp.naryConstraints) {
+      final subAssignment = <String, dynamic>{};
+      for (final v in c.vars) {
+        subAssignment[v] = assignment[v];
+      }
+      if (!c.predicate(subAssignment)) {
+        conflicted.addAll(c.vars);
+      }
+    }
+    return conflicted.toList();
+  }
+
+  /// Counts the number of conflicts a specific variable/value pair would cause.
+  static int _countConflictsForVar(
+      String variable,
+      dynamic value,
+      Map<String, dynamic> assignment,
+      CspProblem csp,
+      Map<String, List<BinaryConstraint>> binaryIndex,
+      Map<String, List<NaryConstraint>> naryIndex) {
+    int conflicts = 0;
+    final tempAssignment = Map<String, dynamic>.from(assignment);
+    tempAssignment[variable] = value;
+
+    // Check relevant binary constraints
+    final relevantBinary =
+        (binaryIndex[variable] ?? []).toSet(); // Use Set to avoid duplicates
+    for (final c in relevantBinary) {
+      if (!c.predicate(tempAssignment[c.head], tempAssignment[c.tail])) {
+        conflicts++;
+      }
+    }
+
+    // Check relevant n-ary constraints
+    final relevantNary =
+        (naryIndex[variable] ?? []).toSet(); // Use Set to avoid duplicates
+    for (final c in relevantNary) {
+      final subAssignment = <String, dynamic>{};
+      for (final v in c.vars) {
+        subAssignment[v] = tempAssignment[v];
+      }
+      if (!c.predicate(subAssignment)) {
+        conflicts++;
+      }
+    }
+
+    return conflicts;
+  }
 
   /// Solves the given Constraint Satisfaction Problem.
   ///

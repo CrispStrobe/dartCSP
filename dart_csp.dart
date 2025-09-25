@@ -1,0 +1,576 @@
+/// A generic, reusable library for solving Constraint Satisfaction Problems (CSPs).
+///
+/// A CSP is a mathematical problem defined by a set of variables, a domain of
+/// possible values for each variable, and a set of constraints that restrict
+/// the values the variables can take.
+///
+/// This solver finds a solution by using a backtracking search algorithm enhanced
+/// with forward checking (consistency enforcement) and heuristics to prune the
+/// search space efficiently. It supports both binary (between two variables)
+/// and n-ary (among multiple variables) constraints.
+///
+/// Core algorithms implemented:
+/// - Backtracking: A form of depth-first search for exploring possible assignments.
+/// - AC-3: Enforces arc consistency for binary constraints.
+/// - GAC (Generalized Arc Consistency): Enforces consistency for n-ary constraints.
+/// - MRV (Minimum Remaining Values): A heuristic for variable selection.
+/// - LCV (Least Constraining Value): A heuristic for value ordering.
+
+import 'dart:async';
+
+// ------------------- Type Definitions -------------------
+
+/// Type definition for a binary constraint predicate.
+///
+/// It takes the value of a 'head' variable and a 'tail' variable and returns
+/// true if the constraint is satisfied between them. This defines a directed
+/// arc from head to tail.
+typedef BinaryPredicate = bool Function(dynamic headVal, dynamic tailVal);
+
+/// Type definition for an n-ary constraint predicate.
+///
+/// It takes a map representing a partial assignment of variables to values
+/// and returns true if the constraint is satisfied for that combination.
+typedef NaryPredicate = bool Function(Map<String, dynamic> assignment);
+
+/// Type definition for the optional callback function during the search.
+///
+/// This can be used for visualizing the search process, showing the state of
+/// assigned and unassigned variable domains at each step of the backtracking.
+typedef CspCallback = void Function(
+    Map<String, List<dynamic>> assigned, Map<String, List<dynamic>> unassigned);
+
+// ------------------- Problem Components -------------------
+
+/// Represents a binary constraint between two variables, forming a directed arc.
+///
+/// For a constraint like `A > B`, you might have one `BinaryConstraint` for the
+/// arc A -> B and another for B -> A to enforce full consistency.
+class BinaryConstraint {
+  /// The "source" variable in the directed constraint arc.
+  final String head;
+
+  /// The "destination" variable in the directed constraint arc.
+  final String tail;
+
+  /// The function that evaluates the constraint between a value from the head's
+  /// domain and a value from the tail's domain.
+  final BinaryPredicate predicate;
+
+  BinaryConstraint(this.head, this.tail, this.predicate);
+}
+
+/// Represents an n-ary constraint involving two or more variables.
+///
+/// This is used for complex constraints that cannot be broken down into simple
+/// binary relationships, such as `A + B = C`.
+class NaryConstraint {
+  /// The list of variable names involved in this constraint.
+  final List<String> vars;
+
+  /// The function that evaluates if a complete assignment for the involved
+  /// variables satisfies the constraint.
+  final NaryPredicate predicate;
+
+  NaryConstraint({required this.vars, required this.predicate});
+}
+
+/// Represents the full definition of a Constraint Satisfaction Problem.
+///
+/// This class encapsulates all the necessary components of a CSP: the variables,
+/// their domains, and the constraints that bind them.
+class CspProblem {
+  /// A map where keys are variable names and values are lists (domains) of
+  /// their possible values.
+  Map<String, List<dynamic>> variables;
+
+  /// A list of binary constraints restricting pairs of variables.
+  List<BinaryConstraint> constraints;
+
+  /// A list of n-ary constraints restricting groups of variables.
+  List<NaryConstraint> naryConstraints;
+
+  /// The delay in milliseconds between steps, used if a [cb] callback is provided.
+  int timeStep;
+
+  /// An optional callback function invoked at each step of the search for visualization.
+  CspCallback? cb;
+
+  /// Internal index mapping each variable to the n-ary constraints it participates in.
+  /// This is built by the solver to speed up the GAC algorithm.
+  Map<String, List<NaryConstraint>>? _naryIndex;
+
+  CspProblem({
+    required this.variables,
+    this.constraints = const [],
+    this.naryConstraints = const [],
+    this.timeStep = 1,
+    this.cb,
+  });
+}
+
+// ------------------- The Solver -------------------
+
+/// A static class providing the method to solve Constraint Satisfaction Problems.
+class CSP {
+  /// A constant string representing failure to find a solution.
+  static const String _failure = 'FAILURE';
+
+  /// A counter for the number of steps taken in the search, used for the callback delay.
+  static int _stepCounter = 0;
+
+  /// Solves the given Constraint Satisfaction Problem.
+  ///
+  /// This is the main public entry point to the solver. It initializes the search,
+  /// runs the backtracking algorithm, and formats the result.
+  ///
+  /// Returns a [Future] that completes with:
+  /// - A `Map<String, dynamic>` of variable assignments if a solution is found.
+  /// - The string 'FAILURE' if no solution exists.
+  static Future<dynamic> solve(CspProblem csp) async {
+    _stepCounter = 0;
+    _validateProblem(csp);
+
+    // Pre-computation: Build an index that maps each variable to its n-ary
+    // constraints. This is a critical optimization for the GAC algorithm, as it
+    // avoids searching through all constraints repeatedly.
+    csp._naryIndex = _buildNaryIndex(csp.naryConstraints);
+
+    // Start the recursive backtracking search with an empty assignment.
+    final result = await _backtrack({}, _cloneVars(csp.variables), csp);
+
+    if (result == _failure) {
+      return _failure;
+    }
+
+    // On success, the result is a map of variables to their single-value domains
+    // (e.g., {'A': [5]}). This step unwraps the lists to return a cleaner result
+    // (e.g., {'A': 5}).
+    if (result is Map<String, List<dynamic>>) {
+      final unwrappedResult = <String, dynamic>{};
+      result.forEach((key, value) {
+        unwrappedResult[key] = (value.isNotEmpty) ? value[0] : null;
+      });
+      return unwrappedResult;
+    }
+    return result;
+  }
+
+  /// The core recursive backtracking algorithm.
+  ///
+  /// Backtracking is a depth-first search (DFS) through the space of possible
+  /// variable assignments. At each level, it assigns a value to a variable and
+  /// then uses consistency enforcement (forward checking) to prune the domains
+  /// of neighboring variables. If a domain becomes empty, it backtracks.
+  static Future<dynamic> _backtrack(Map<String, List<dynamic>> assigned,
+      Map<String, List<dynamic>> unassigned, CspProblem csp) async {
+    // Base case: If there are no unassigned variables, a complete and valid
+    // solution has been found.
+    if (_finished(unassigned)) {
+      return assigned;
+    }
+
+    // Heuristic 1: Select which variable to assign next.
+    // The Minimum Remaining Values (MRV) heuristic is used here. It chooses the
+    // variable with the smallest domain, which is likely to cause a failure sooner
+    // if a wrong path is taken, thus pruning the search tree effectively.
+    final nextKey = _selectUnassignedVariable(unassigned);
+    if (nextKey == null) {
+      // Should not happen if _finished is false, but acts as a safeguard.
+      return _failure;
+    }
+
+    // Heuristic 2: Order the values of the chosen variable.
+    // The Least Constraining Value (LCV) heuristic is used to decide the order
+    // in which to try values. It prefers values that leave the most options
+    // for other variables, increasing the chance of finding a solution without
+    // backtracking.
+    final values = _orderValues(nextKey, assigned, unassigned, csp);
+
+    final savedDomain = unassigned[nextKey];
+    unassigned.remove(nextKey);
+
+    // Iterate through the chosen values for the selected variable.
+    for (final value in values) {
+      _stepCounter++;
+      final currentAssignment = _cloneVars(assigned);
+      currentAssignment[nextKey] = [value];
+
+      // This is the "forward checking" or "look-ahead" step. After making a
+      // tentative assignment, enforce consistency to see its impact on other
+      // variables' domains.
+      final consistentVars =
+          _enforceConsistency(currentAssignment, unassigned, csp);
+
+      // If consistency enforcement leads to a contradiction (e.g., an empty
+      // domain for some variable), this path is invalid. Skip to the next value.
+      if (consistentVars == _failure) {
+        continue;
+      }
+
+      final consistentMap = consistentVars as Map<String, List<dynamic>>;
+
+      // Prepare the state for the recursive call.
+      final newAssigned = <String, List<dynamic>>{};
+      final newUnassigned = <String, List<dynamic>>{};
+      consistentMap.forEach((key, value) {
+        if (currentAssignment.containsKey(key)) {
+          newAssigned[key] = List<dynamic>.from(value);
+        } else {
+          newUnassigned[key] = List<dynamic>.from(value);
+        }
+      });
+
+      // Optional callback for visualizing the search step.
+      if (csp.cb != null) {
+        await Future.delayed(
+            Duration(milliseconds: _stepCounter * csp.timeStep),
+            () => csp.cb!(newAssigned, newUnassigned));
+      }
+
+      // If any domain has become empty as a result of our assignment, this
+      // path is invalid. Prune this branch and try the next value.
+      if (_anyEmpty(consistentMap)) {
+        continue;
+      }
+
+      // Recurse: Move to the next level of the search tree.
+      final result = await _backtrack(newAssigned, newUnassigned, csp);
+
+      // If the recursive call found a solution, propagate it up.
+      if (result != _failure) {
+        return result;
+      }
+    }
+
+    // If all values for the current variable have been tried and none led to a
+    // solution, backtrack by restoring the state and returning failure.
+    if (savedDomain != null) {
+      unassigned[nextKey] = savedDomain;
+    }
+    return _failure;
+  }
+
+  // ---------------- Consistency Algorithms ----------------
+
+  /// Enforces consistency on the variable domains after a tentative assignment.
+  ///
+  /// This function acts as a dispatcher, running AC-3 for binary constraints
+  /// and GAC for n-ary constraints.
+  static dynamic _enforceConsistency(Map<String, List<dynamic>> assigned,
+      Map<String, List<dynamic>> unassigned, CspProblem csp) {
+    // Combine assigned and unassigned variables into a single view for consistency checks.
+    final variables = _partialAssignment(assigned, unassigned);
+
+    // Run AC-3 for binary constraints. If it returns false, a contradiction was
+    // found, and this assignment path is invalid.
+    if (csp.constraints.isNotEmpty) {
+      if (!_runAC3(variables, csp.constraints)) {
+        return _failure;
+      }
+    }
+
+    // Run GAC for n-ary constraints. If it returns false, a contradiction was
+    // found.
+    if (csp.naryConstraints.isNotEmpty) {
+      if (!_runGAC(variables, csp)) {
+        return _failure;
+      }
+    }
+
+    return variables;
+  }
+  
+  /// RESTORED: This helper method was missing.
+  /// Builds an index mapping variables to their n-ary constraints.
+  ///
+  /// This is a pre-computation step to optimize GAC. Instead of searching all
+  /// n-ary constraints every time a domain changes, we can quickly look up
+  /// only the relevant constraints that involve the changed variable.
+  static Map<String, List<NaryConstraint>> _buildNaryIndex(
+      List<NaryConstraint> naryConstraints) {
+    final index = <String, List<NaryConstraint>>{};
+    for (final c in naryConstraints) {
+      for (final v in c.vars) {
+        // For each variable `v` in a constraint `c`, add `c` to `v`'s list in the index.
+        (index[v] ??= []).add(c);
+      }
+    }
+    return index;
+  }
+
+  /// Implements the AC-3 algorithm to enforce arc consistency for binary constraints.
+  ///
+  /// An arc (A, B) is consistent if for every value `x` in A's domain, there is
+  /// some allowed value `y` in B's domain. AC-3 works by iterating through all
+  /// arcs, removing values that do not have "support" in the neighboring variable.
+  /// If a domain changes, it re-adds all arcs pointing to that variable to the
+  /// queue to propagate the change.
+  static bool _runAC3(Map<String, List<dynamic>> variables,
+      List<BinaryConstraint> constraints) {
+    // Initialize the queue with all arcs (constraints) in the problem.
+    List<BinaryConstraint> queue = List.from(constraints);
+
+    while (queue.isNotEmpty) {
+      final constraint = queue.removeAt(0);
+      final head = constraint.head;
+      final tail = constraint.tail;
+
+      if (!variables.containsKey(head) || !variables.containsKey(tail)) continue;
+
+      bool removed = false;
+      final headDomain = variables[head]!;
+      final tailDomain = variables[tail]!;
+      final newTailDomain = <dynamic>[];
+
+      // For each value in the tail's domain, check if it has support in the head's domain.
+      for (final tailVal in tailDomain) {
+        // A value `tailVal` has support if there's at least one value `headVal`
+        // in the head's domain such that the predicate(headVal, tailVal) is true.
+        final bool hasSupport =
+            headDomain.any((headVal) => constraint.predicate(headVal, tailVal));
+
+        if (hasSupport) {
+          newTailDomain.add(tailVal);
+        } else {
+          removed = true;
+        }
+      }
+
+      // If any values were removed from the tail's domain...
+      if (removed) {
+        // If the domain becomes empty, we have a contradiction.
+        if (newTailDomain.isEmpty) return false;
+
+        // Update the domain.
+        variables[tail] = newTailDomain;
+
+        // Propagate the change: re-add all arcs that point to the modified
+        // variable `tail` to the queue, so their consistency can be re-checked.
+        queue.addAll(constraints.where((c) => c.head == tail));
+      }
+    }
+    return true; // All arcs are consistent.
+  }
+
+  /// Implements Generalized Arc Consistency (GAC) for n-ary constraints.
+  ///
+  /// GAC is an extension of arc consistency for constraints involving more than
+  /// two variables. A variable is GAC-consistent with respect to a constraint
+  /// if for every value in its domain, there exists a valid assignment for all
+  /// other variables in the constraint.
+  static bool _runGAC(Map<String, List<dynamic>> variables, CspProblem csp) {
+    // Initialize the queue with all n-ary constraints.
+    final queue = List<NaryConstraint>.from(csp.naryConstraints);
+    final index = csp._naryIndex!; // Use the pre-built index for efficiency.
+
+    while (queue.isNotEmpty) {
+      final constraint = queue.removeAt(0);
+      bool changedAny = false;
+
+      // For each variable in the current constraint...
+      for (final varName in constraint.vars) {
+        final domain = variables[varName];
+        if (domain == null) continue;
+
+        // Filter its domain, keeping only values that have "support".
+        final newDomain = domain
+            .where((val) => _hasSupport(varName, val, constraint, variables))
+            .toList();
+
+        if (newDomain.length != domain.length) {
+          // If the domain is now empty, we have a contradiction.
+          if (newDomain.isEmpty) return false;
+
+          variables[varName] = newDomain;
+          changedAny = true;
+        }
+      }
+
+      // If any domain was reduced, we must re-check all other constraints
+      // involving the variables from the current constraint.
+      if (changedAny) {
+        for (final v2 in constraint.vars) {
+          final related = index[v2] ?? [];
+          for (final rc in related) {
+            if (!queue.contains(rc)) {
+              queue.add(rc);
+            }
+          }
+        }
+      }
+    }
+    return true; // All constraints are GAC-consistent.
+  }
+
+  /// Checks if a value has "support" within an n-ary constraint.
+  ///
+  /// A value `focusVal` for `focusVar` has support if there exists at least one
+  /// combination of values for the other variables in the constraint `C` that
+  /// satisfies `C.predicate`. This is itself a mini-CSP, solved here with a
+  /// simple recursive DFS.
+  static bool _hasSupport(String focusVar, dynamic focusVal, NaryConstraint c,
+      Map<String, List<dynamic>> variables) {
+    // Gather the other variables involved in the constraint.
+    final others = c.vars.where((v) => v != focusVar).toList();
+    if (others.any((v) => !variables.containsKey(v) || variables[v]!.isEmpty)) {
+      // If any other variable has no domain, support is impossible.
+      return false;
+    }
+
+    final order = [focusVar, ...others];
+    final domains = [
+      [focusVal], // The domain for our focus variable is just the single value.
+      ...others.map((v) => variables[v]!)
+    ];
+
+    final assignment = <String, dynamic>{};
+
+    // Use a simple DFS to search for one satisfying assignment.
+    bool dfs(int i) {
+      // Base case: a full assignment for the constraint has been built.
+      if (i == order.length) {
+        // Check if this assignment satisfies the predicate.
+        return c.predicate(assignment);
+      }
+
+      final varName = order[i];
+      // Iterate through the values of the current variable.
+      for (final val in domains[i]) {
+        assignment[varName] = val;
+        // Recurse to the next variable.
+        if (dfs(i + 1)) return true; // Found support, so exit early.
+      }
+      return false; // No value at this level led to a solution.
+    }
+
+    return dfs(0);
+  }
+
+  // ---------------- Heuristics ----------------
+
+  /// Selects the next unassigned variable using the MRV heuristic.
+  ///
+  /// MRV (Minimum Remaining Values) chooses the variable with the fewest
+  /// remaining legal values in its domain. This is a "fail-first" strategy:
+  /// if a mistake is to be made, it's better to make it on a highly constrained
+  /// variable where the mistake will be discovered sooner, pruning the search tree.
+  static String? _selectUnassignedVariable(
+      Map<String, List<dynamic>> unassigned) {
+    String? minKey;
+    int minLen = 1 << 30; // A large number, equivalent to infinity.
+    for (final entry in unassigned.entries) {
+      final len = entry.value.length;
+      if (len < minLen) {
+        minKey = entry.key;
+        minLen = len;
+        // Optimization: if a domain has only one value, it's the most
+        // constrained possible, so we can select it immediately.
+        if (len == 1) break;
+      }
+    }
+    return minKey;
+  }
+
+  /// Orders the values of a variable's domain using the LCV heuristic.
+  ///
+  /// LCV (Least Constraining Value) prefers the value that prunes the fewest
+  /// values from the domains of neighboring variables. This is a "succeed-first"
+  /// strategy: it tries to keep the search space as open as possible, increasing
+  /// the chances of finding a solution on the current path.
+  static List<dynamic> _orderValues(
+      String nextKey,
+      Map<String, List<dynamic>> assigned,
+      Map<String, List<dynamic>> unassigned,
+      CspProblem csp) {
+    final baseValues = List<dynamic>.from(unassigned[nextKey]!);
+    if (baseValues.length <= 1) return baseValues;
+
+    final scores = <dynamic, num>{};
+
+    // For each potential value, calculate a "score".
+    for (final val in baseValues) {
+      // Create temporary copies to test the effect of assigning the value.
+      final a = _cloneVars(assigned);
+      final u = _cloneVars(unassigned);
+      a[nextKey] = [val];
+      u.remove(nextKey);
+
+      // Tentatively enforce consistency.
+      final res = _enforceConsistency(a, u, csp);
+
+      // A higher score is better. The score is the total number of remaining
+      // values across all other variables' domains.
+      if (res == _failure || _anyEmpty(res as Map<String, List<dynamic>>)) {
+        scores[val] = double.negativeInfinity; // This value leads to failure.
+      } else {
+        scores[val] = (res as Map<String, List<dynamic>>)
+            .values
+            .fold<int>(0, (sum, d) => sum + d.length);
+      }
+    }
+
+    // Sort the values in descending order of their scores.
+    baseValues.sort((a, b) => scores[b]!.compareTo(scores[a]!));
+    return baseValues;
+  }
+
+  // ------------------- Utility Methods -------------------
+
+  /// Creates a deep copy of the variable domains map.
+  static Map<String, List<dynamic>> _cloneVars(
+      Map<String, List<dynamic>> variables) {
+    final out = <String, List<dynamic>>{};
+    variables.forEach((k, v) => out[k] = List<dynamic>.from(v));
+    return out;
+  }
+
+  /// Checks if all variables have been assigned.
+  static bool _finished(Map<String, List<dynamic>> unassigned) =>
+      unassigned.isEmpty;
+
+  /// Checks if any variable has an empty domain.
+  static bool _anyEmpty(Map<String, List<dynamic>> vars) =>
+      vars.values.any((v) => v.isEmpty);
+
+  /// Combines assigned and unassigned variables into a single map.
+  static Map<String, List<dynamic>> _partialAssignment(
+      Map<String, List<dynamic>> assigned,
+      Map<String, List<dynamic>> unassigned) =>
+      {...unassigned, ...assigned};
+
+  /// Validates the structure and integrity of the provided CspProblem.
+  static void _validateProblem(CspProblem csp) {
+    final varsSet = csp.variables.keys.toSet();
+
+    csp.variables.forEach((v, domain) {
+      if (domain is! List) {
+        throw ArgumentError('Variable "$v" domain is not a list');
+      }
+    });
+
+    for (final c in csp.constraints) {
+      if (!varsSet.contains(c.head)) {
+        throw ArgumentError(
+            'Binary constraint references unknown variable "${c.head}"');
+      }
+      if (!varsSet.contains(c.tail)) {
+        throw ArgumentError(
+            'Binary constraint references unknown variable "${c.tail}"');
+      }
+    }
+
+    for (final c in csp.naryConstraints) {
+      if (c.vars.isEmpty) {
+        throw ArgumentError('N-ary constraint missing vars list');
+      }
+      for (final v in c.vars) {
+        if (!varsSet.contains(v)) {
+          throw ArgumentError(
+              'N-ary constraint references unknown variable "$v"');
+        }
+      }
+    }
+  }
+}
+

@@ -37,13 +37,19 @@ This solver goes beyond brute-force search with the following implemented algori
 - **Minimum Remaining Values (MRV)**: Chooses the most constrained variable to assign next ("fail-first" principle)
 - **Least Constraining Value (LCV)**: Selects values that preserve the most options for other variables
 
+### Built-in Constraint Library
+- **20+ Pre-built Constraints**: Common constraint patterns like `allDifferent()`, `exactSum()`, `ascending()`, etc.
+- **Optimized Performance**: Built-in constraints are faster than equivalent lambda functions
+- **Extension Methods**: Fluent API methods like `addAllDifferent()` for cleaner code
+
 ### Developer Features
 - **Fluent Builder API**: An intuitive Problem class to easily define your CSP
+- **Comprehensive Demo**: Complete examples showing all constraint types and problem-solving techniques
 - **Visualization Hooks**: Step-by-step callback system for demos and debugging
 - **Type Safety**: Full Dart type system integration
 - **Async Support**: Non-blocking solving with `Future`-based API
 
-## How to Use dart_csp
+## Quick Start
 
 ### 1. Installation
 
@@ -53,109 +59,269 @@ Add `dart_csp.dart` to your project (e.g., in your `lib` directory) and import i
 import 'dart_csp.dart';
 ```
 
-### 2. Define Your Problem
-
-You have two ways to define a CSP. The builder is recommended for most use cases.
-
-#### Method 1: The Problem Builder (Recommended)
-
-The Problem class provides a clean, step-by-step builder pattern. It simplifies the process and automatically handles details like constraint symmetry.
+### 2. Your First Problem - Map Coloring
 
 ```dart
-// 1. Create a new Problem instance
+Future<void> main() async {
+  final p = Problem();
+  
+  // Variables: Australian states, Domain: Colors
+  p.addVariables(['WA', 'NT', 'SA', 'Q', 'NSW', 'V'], ['red', 'green', 'blue']);
+  
+  // Constraints: Adjacent states must have different colors
+  p.addAllDifferent(['SA', 'WA']); // Using built-in constraint
+  p.addAllDifferent(['SA', 'NT']);
+  p.addAllDifferent(['SA', 'Q']);
+  // ... more constraints
+  
+  final solution = await p.getSolution();
+  print(solution); // {WA: red, NT: blue, SA: green, ...}
+}
+```
+
+### 3. Run the Comprehensive Demo
+
+The library includes a complete demo showcasing all features:
+
+```bash
+dart run demo.dart
+```
+
+This runs 11 different constraint satisfaction problems demonstrating:
+- USA Map Coloring
+- N-Queens Problem  
+- Sudoku Solving
+- Magic Square Generation
+- Resource Allocation
+- Class Scheduling
+- And more!
+
+## How to Use dart_csp
+
+### Method 1: The Problem Builder (Recommended)
+
+The Problem class provides a clean, step-by-step builder pattern with built-in constraints.
+
+```dart
 final p = Problem();
 
-// 2. Add variables and their domains
-const colors = ['red', 'green', 'blue'];
-p.addVariables(['WA', 'NT', 'SA'], colors);
-p.addVariable('Q', ['red', 'green']); // You can also add one at a time
+// 1. Add variables and domains
+p.addVariables(['A', 'B', 'C'], [1, 2, 3, 4, 5]);
 
-// 3. Add constraints using intuitive predicates
-// The builder automatically creates constraints for both directions (SA->WA and WA->SA)
-p.addConstraint(['SA', 'WA'], (sa, wa) => sa != wa);
-p.addConstraint(['SA', 'NT'], (sa, nt) => sa != nt);
+// 2. Use built-in constraints (recommended)
+p.addAllDifferent(['A', 'B', 'C']);      // All different values
+p.addExactSum(['A', 'B'], 7);            // A + B = 7
+p.addAscending(['A', 'B', 'C']);         // A ≤ B ≤ C
 
-// N-ary constraints are also simple
-p.addConstraint(
-  ['WA', 'NT', 'SA'],
-  (assignment) => assignment['WA'] != 'red' || assignment['NT'] != 'green'
-);
+// 3. Or define custom constraints
+p.addConstraint(['A', 'B'], (a, b) => a * b <= 10);
 
-// 4. Solve it!
+// 4. Solve
 final solution = await p.getSolution();
 ```
 
-#### Method 2: Manual CspProblem Construction
+### Method 2: Manual CspProblem Construction
 
-This method gives you direct access to the underlying data structures. It's useful if you are generating the problem components programmatically.
+Direct access to underlying data structures for programmatic generation.
 
 ```dart
-// 1. Define variables and domains
 var variables = <String, List<dynamic>>{
   'A': [1, 2, 3],
   'B': [1, 2, 3, 4],
   'C': [3, 4, 5],
 };
 
-// 2. Define constraints
 var binaryConstraints = <BinaryConstraint>[
-  // For full consistency, you must add constraints for both directions manually
   BinaryConstraint('A', 'B', (a, b) => a < b),
   BinaryConstraint('B', 'A', (b, a) => b > a),
 ];
 
-var naryConstraints = <NaryConstraint>[
-  NaryConstraint(
-    vars: ['A', 'B', 'C'],
-    predicate: (assignment) =>
-        assignment['A']! + assignment['B']! == assignment['C']!,
-  ),
-];
-
-// 3. Create the problem object
 final problem = CspProblem(
   variables: variables,
   constraints: binaryConstraints,
-  naryConstraints: naryConstraints,
 );
 
-// 4. Solve it!
 final solution = await CSP.solve(problem);
 ```
 
-### 3. Handle the Solution
+## Built-in Constraint Library
 
-The solver returns a Future that resolves to either a solution Map or the string "FAILURE".
+The library provides optimized, reusable constraint functions for common patterns:
+
+### Equality/Inequality Constraints
 
 ```dart
-Future<void> main() async {
+// All variables must have different values
+p.addAllDifferent(['A', 'B', 'C', 'D']);
+
+// All variables must have the same value  
+p.addAllEqual(['X', 'Y', 'Z']);
+```
+
+### Arithmetic Constraints
+
+```dart
+// Sum constraints
+p.addExactSum(['A', 'B', 'C'], 15);           // A + B + C = 15
+p.addSumRange(['A', 'B'], 5, 10);             // 5 ≤ A + B ≤ 10
+
+// Weighted sums
+p.addExactSum(['A', 'B'], 20, multipliers: [3, 4]); // 3*A + 4*B = 20
+
+// Product constraints  
+p.addExactProduct(['X', 'Y'], 12);            // X * Y = 12
+p.addConstraint(['A', 'B', 'C'], minProduct(8));     // A * B * C ≥ 8
+```
+
+### Set Membership Constraints
+
+```dart
+// Variables must be from allowed set
+p.addInSet(['A', 'B'], {2, 3, 5, 7});        // Only prime numbers
+
+// Variables cannot be from forbidden set
+p.addNotInSet(['X', 'Y'], {2, 4, 6});        // No even numbers
+
+// At least N variables must be from set
+p.addConstraint(['A', 'B', 'C'], someInSet({1, 3, 5}, 2)); // ≥2 odd numbers
+```
+
+### Ordering Constraints
+
+```dart
+// Ordering (preserves variable sequence)
+p.addAscending(['A', 'B', 'C']);             // A ≤ B ≤ C
+p.addStrictlyAscending(['X', 'Y', 'Z']);     // X < Y < Z  
+p.addDescending(['P', 'Q', 'R']);            // P ≥ Q ≥ R
+```
+
+### Using Factory Functions Directly
+
+You can also use the constraint factory functions directly:
+
+```dart
+// Using factory functions with addConstraint()
+p.addConstraint(['A', 'B', 'C'], allDifferent());
+p.addConstraint(['X', 'Y'], exactSumBinary(10)); // For 2 variables, more efficient
+
+// Custom combinations
+p.addConstraint(['A', 'B', 'C'], (assignment) {
+  // Custom logic combining multiple constraint types
+  return allDifferent()(assignment) && exactSum(12)(assignment);
+});
+```
+
+## Real-World Examples
+
+### Sudoku Solver
+
+```dart
+Future<void> solveSudoku(List<List<int>> puzzle) async {
   final p = Problem();
-  // ... define your problem here ...
-
-  print("Solving puzzle...");
-  final solution = await p.getSolution(); // Or await CSP.solve(problem);
-
-  if (solution is String) {
-    print("No solution found: $solution");
-  } else if (solution is Map) {
-    print("Solution found! 🎉");
-    solution.forEach((variable, value) {
-      print("  $variable = $value");
-    });
+  
+  // Add variables for each cell
+  for (int r = 0; r < 9; r++) {
+    for (int c = 0; c < 9; c++) {
+      final key = '$r-$c';
+      if (puzzle[r][c] != 0) {
+        p.addVariable(key, [puzzle[r][c]]);  // Clue
+      } else {
+        p.addVariable(key, [1, 2, 3, 4, 5, 6, 7, 8, 9]);  // Empty cell
+      }
+    }
   }
+  
+  // Row constraints (all different)
+  for (int r = 0; r < 9; r++) {
+    final row = List.generate(9, (c) => '$r-$c');
+    p.addAllDifferent(row);
+  }
+  
+  // Column constraints
+  for (int c = 0; c < 9; c++) {
+    final col = List.generate(9, (r) => '$r-$c');
+    p.addAllDifferent(col);
+  }
+  
+  // 3x3 block constraints
+  for (int br in [0, 3, 6]) {
+    for (int bc in [0, 3, 6]) {
+      final block = <String>[];
+      for (int r = br; r < br + 3; r++) {
+        for (int c = bc; c < bc + 3; c++) {
+          block.add('$r-$c');
+        }
+      }
+      p.addAllDifferent(block);
+    }
+  }
+  
+  final solution = await p.getSolution();
+  // Print solved puzzle...
+}
+```
+
+### Magic Square Generator
+
+```dart
+Future<void> generateMagicSquare() async {
+  final p = Problem();
+  
+  // 3x3 grid with numbers 1-9
+  final positions = ['00', '01', '02', '10', '11', '12', '20', '21', '22'];
+  p.addVariables(positions, [1, 2, 3, 4, 5, 6, 7, 8, 9]);
+  
+  // Each number appears exactly once
+  p.addAllDifferent(positions);
+  
+  // All rows sum to 15
+  p.addExactSum(['00', '01', '02'], 15);
+  p.addExactSum(['10', '11', '12'], 15);  
+  p.addExactSum(['20', '21', '22'], 15);
+  
+  // All columns sum to 15
+  p.addExactSum(['00', '10', '20'], 15);
+  p.addExactSum(['01', '11', '21'], 15);
+  p.addExactSum(['02', '12', '22'], 15);
+  
+  // Diagonals sum to 15
+  p.addExactSum(['00', '11', '22'], 15);
+  p.addExactSum(['02', '11', '20'], 15);
+  
+  final solution = await p.getSolution();
+  // Display magic square...
+}
+```
+
+### Resource Allocation
+
+```dart
+Future<void> allocateResources() async {
+  final p = Problem();
+  
+  // Teams get 3-10 resources each  
+  p.addVariables(['TeamA', 'TeamB', 'TeamC'], [3, 4, 5, 6, 7, 8, 9, 10]);
+  
+  // Total budget constraint
+  p.addExactSum(['TeamA', 'TeamB', 'TeamC'], 20);
+  
+  // Priority: TeamA gets at least as much as TeamB
+  p.addConstraint(['TeamA', 'TeamB'], (a, b) => a >= b);
+  
+  final solution = await p.getSolution();
+  print('Team A: ${solution['TeamA']} resources');
+  print('Team B: ${solution['TeamB']} resources'); 
+  print('Team C: ${solution['TeamC']} resources');
 }
 ```
 
 ## Advanced Usage
 
-## Advanced Usage
-
 ### Visualization and Debugging
 
-You can monitor the solver's progress with a callback function. This is supported by both the Problem builder and the manual CspProblem.
+Monitor the solver's progress with callback functions:
 
 ```dart
-// Define a callback function to print the solver's state at each step
 void visualizer(
   Map<String, List<dynamic>> assigned,
   Map<String, List<dynamic>> unassigned,
@@ -165,141 +331,95 @@ void visualizer(
   print("Unassigned Domains: $unassigned");
 }
 
-// Using the Problem builder
 final p = Problem();
-// ... add variables and constraints ...
+// ... define problem ...
 p.setOptions(
   timeStep: 100, // 100ms pause between steps
   callback: visualizer,
 );
+
 final solution = await p.getSolution();
-
-// Or, using the manual method
-final visualProblem = CspProblem(
-  variables: variables,
-  constraints: constraints,
-  cb: visualizer,
-  timeStep: 100,
-);
-final solution = await CSP.solve(visualProblem);
 ```
 
-### Real-World Example: Arithmetic Square Puzzle
+### Performance Optimization
 
-Here's a side-by-side comparison of how the included arithmetic puzzle generator can be implemented using both methods.
-
-#### Using the Problem Builder (New Way)
-
-```dart
-class PuzzleGenerator {
-  Problem buildPuzzleConstraintsNewWay(Map<String, int> clues) {
-    final p = Problem();
-
-    // 1. Add variables and their domains
-    for (int r = 0; r < gridSize; r++) {
-      for (int c = 0; c < gridSize; c++) {
-        final cellId = '$r,$c';
-        p.addVariable(
-          cellId,
-          clues.containsKey(cellId) ? [clues[cellId]!] : fullDomain,
-        );
-      }
-    }
-
-    // 2. Add n-ary constraints for each row and column equation
-    for (int r = 0; r < gridSize; r++) {
-      final rowVars = List<String>.generate(gridSize, (c) => '$r,$c');
-      p.addConstraint(rowVars, (assignment) {
-        // ... predicate logic to check if the equation is valid ...
-        final values = rowVars.map((v) => assignment[v]!).toList();
-        final operands = values.sublist(0, gridSize - 1);
-        final result = values.last;
-        return evaluate(operands, ops['rows']![r]) == result;
-      });
-    }
-    // ... similar loop for columns ...
-
-    return p;
-  }
-}
-```
-
-#### Using Manual Construction (Old Way)
+1. **Use Built-in Constraints**: `addAllDifferent()` is faster than custom lambdas
+2. **Restrict Domains Early**: Smaller initial domains = faster solving
+3. **Strategic Constraint Ordering**: Add most constraining constraints first
+4. **Consider Clues**: For puzzles, pre-fill strategic positions to reduce search space
 
 ```dart
-class PuzzleGenerator {
-  CspProblem buildPuzzleConstraintsOldWay(Map<String, int> clues) {
-    final variables = <String, List<dynamic>>{};
-    final naryConstraints = <NaryConstraint>[];
+// Performance example: Magic square with clue
+final p = Problem();
 
-    // 1. Define variables and domains
-    for (int r = 0; r < gridSize; r++) {
-      for (int c = 0; c < gridSize; c++) {
-        final cellId = '$r,$c';
-        if (clues.containsKey(cellId)) {
-          variables[cellId] = [clues[cellId]];
-        } else {
-          variables[cellId] = List<int>.generate(
-            maxNum - minNum + 1, 
-            (i) => i + minNum
-          );
-        }
-      }
-    }
+// Add strategic clue to dramatically reduce search space
+p.addVariable('11', [5]); // Center is always 5
 
-    // 2. Create n-ary constraints for each row and column equation
-    for (int r = 0; r < gridSize; r++) {
-      final rowVars = List<String>.generate(gridSize, (c) => '$r,$c');
-      naryConstraints.add(NaryConstraint(
-        vars: rowVars,
-        predicate: (assignment) {
-          final values = rowVars.map((v) => assignment[v]!).toList();
-          final operands = values.sublist(0, gridSize - 1);
-          final result = values.last;
-          return evaluate(operands, ops['rows']![r]) == result;
-        },
-      ));
-    }
-    // ... similar loop for columns ...
+// Remaining variables exclude the clue value  
+final positions = ['00', '01', '02', '10', '12', '20', '21', '22'];
+p.addVariables(positions, [1, 2, 3, 4, 6, 7, 8, 9]); // No 5
 
-    return CspProblem(variables: variables, naryConstraints: naryConstraints);
-  }
-}
+// ... add constraints ...
 ```
 
 ## API Reference
 
-### Problem Class (Builder)
-
-The recommended way to define a CSP using a fluent builder pattern.
+### Problem Class (Builder) - Core Methods
 
 | Method | Parameters | Description |
 |--------|------------|-------------|
-| `addVariable()` | `String name`, `List<dynamic> domain` | Adds a single variable and its domain |
-| `addVariables()` | `List<String> names`, `List<dynamic> domain` | Adds multiple variables that share the same domain |
-| `addConstraint()` | `List<String> vars`, `Function predicate` | Adds a binary or n-ary constraint based on the number of variables |
-| `setOptions()` | `int? timeStep`, `CspCallback? callback` | Sets optional parameters for visualization |
-| `getSolution()` | (none) | Builds and solves the problem, returning a Future |
+| `addVariable()` | `String name`, `List<dynamic> domain` | Adds a single variable with its domain |
+| `addVariables()` | `List<String> names`, `List<dynamic> domain` | Adds multiple variables sharing the same domain |
+| `addConstraint()` | `List<String> vars`, `Function predicate` | Adds custom binary or n-ary constraint |
+| `setOptions()` | `int? timeStep`, `CspCallback? callback` | Sets visualization parameters |
+| `getSolution()` | (none) | Builds and solves the problem |
 
-#### Constraint Types in Problem Builder
+### Problem Class - Built-in Constraint Extensions
 
-The `addConstraint()` method automatically determines the constraint type:
+| Method | Parameters | Description |
+|--------|------------|-------------|
+| `addAllDifferent()` | `List<String> variables` | All variables have different values |
+| `addAllEqual()` | `List<String> variables` | All variables have the same value |
+| `addExactSum()` | `List<String> vars`, `num sum`, `List<num>? multipliers` | Variables sum to exact value |
+| `addSumRange()` | `List<String> vars`, `num min`, `num max`, `List<num>? multipliers` | Sum within range |
+| `addExactProduct()` | `List<String> vars`, `num product` | Variables multiply to exact value |
+| `addInSet()` | `List<String> vars`, `Set<dynamic> allowed` | Variables must be from allowed set |
+| `addNotInSet()` | `List<String> vars`, `Set<dynamic> forbidden` | Variables cannot be from forbidden set |
+| `addAscending()` | `List<String> variables` | Variables in non-decreasing order |
+| `addStrictlyAscending()` | `List<String> variables` | Variables in strictly increasing order |
+| `addDescending()` | `List<String> variables` | Variables in non-increasing order |
 
-- **For 2 variables**: Expects a `bool Function(dynamic, dynamic)` predicate. The builder automatically creates bidirectional constraints for full consistency.
-- **For 1, 3+ variables**: Expects a `bool Function(Map<String, dynamic>)` predicate for n-ary constraints.
+### Built-in Constraint Factory Functions
 
-```dart
-// Binary constraint (automatic bidirectional)
-p.addConstraint(['A', 'B'], (a, b) => a != b);
+#### Equality Constraints
+- `allDifferent()` → `NaryPredicate`
+- `allDifferentBinary()` → `BinaryPredicate`  
+- `allEqual()` → `NaryPredicate`
+- `allEqualBinary()` → `BinaryPredicate`
 
-// N-ary constraint  
-p.addConstraint(['A', 'B', 'C'], (assignment) => 
-    assignment['A']! + assignment['B']! == assignment['C']!);
-```
+#### Arithmetic Constraints
+- `exactSum(num target, {List<num>? multipliers})` → `NaryPredicate`
+- `minSum(num minimum, {List<num>? multipliers})` → `NaryPredicate`
+- `maxSum(num maximum, {List<num>? multipliers})` → `NaryPredicate`
+- `sumInRange(num min, num max, {List<num>? multipliers})` → `NaryPredicate`
+- `exactProduct(num target)` → `NaryPredicate`
+- `minProduct(num minimum)` → `NaryPredicate`
+- `maxProduct(num maximum)` → `NaryPredicate`
 
-### CspProblem Class (Core Definition)
+#### Set Membership Constraints  
+- `inSet(Set<dynamic> allowed)` → `NaryPredicate`
+- `notInSet(Set<dynamic> forbidden)` → `NaryPredicate`
+- `someInSet(Set<dynamic> values, int minimum)` → `NaryPredicate`
+- `someNotInSet(Set<dynamic> values, int minimum)` → `NaryPredicate`
 
-The underlying data structure for a CSP when using manual construction.
+#### Ordering Constraints
+- `ascendingInOrder(List<String> order)` → `NaryPredicate`
+- `strictlyAscendingInOrder(List<String> order)` → `NaryPredicate`
+- `descendingInOrder(List<String> order)` → `NaryPredicate`
+
+*Note: Binary versions (suffix `Binary`) are available for 2-variable optimizations.*
+
+### CspProblem Class (Manual Construction)
 
 | Property | Type | Required | Description |
 |----------|------|----------|-------------|
@@ -328,24 +448,80 @@ NaryConstraint({
 })
 ```
 
-### Solver Method
+### Type Definitions
 
 ```dart
-static Future<dynamic> CSP.solve(CspProblem problem)
+typedef BinaryPredicate = bool Function(dynamic headVal, dynamic tailVal);
+typedef NaryPredicate = bool Function(Map<String, dynamic> assignment);
+typedef CspCallback = void Function(
+  Map<String, List<dynamic>> assigned, 
+  Map<String, List<dynamic>> unassigned
+);
 ```
 
-**Returns**: `Future<Map<String, dynamic>>` on success, `Future<String>` ("FAILURE") if no solution exists.
+## Running the Demo
+
+The comprehensive demo (`demo.dart`) showcases all library features with 11 different problems:
+
+```bash
+dart run demo.dart
+```
+
+### Demo Contents
+
+1. **USA Map Coloring** - Compares old vs new constraint methods
+2. **8-Queens Problem** - Classic backtracking demonstration  
+3. **Sudoku Solver** - Using built-in `allDifferent` constraints
+4. **All Different & Equal Constraints** - Basic constraint examples
+5. **Sum Constraints** - Arithmetic constraint varieties
+6. **Product Constraints** - Multiplication-based rules
+7. **Set Membership** - Value inclusion/exclusion constraints
+8. **Ordering Constraints** - Sequential arrangement rules
+9. **Magic Square** - Complex multi-constraint problem with random clues
+10. **Resource Allocation** - Real-world optimization scenario
+11. **Class Scheduling** - Timetabling with multiple constraint types
+
+Each demo includes:
+- Problem setup explanation
+- Constraint definition examples  
+- Solution verification
+- Performance timing
 
 ## Performance Tips
 
-1. **Use the MRV Heuristic**: The solver automatically picks the most constrained variable first, which is a highly effective strategy
-2. **Handle Bidirectional Constraints**: For binary rules like A != B, consistency must be checked both ways. The Problem builder does this automatically. If building a CspProblem manually, remember to add constraints for both (A,B) and (B,A)
-3. **Minimize Domain Sizes**: The smaller the initial domains, the faster the search space can be pruned
-4. **Prefer N-ary Constraints**: For rules involving many variables (like Sudoku's "all-different" rule), a single n-ary constraint is often more efficient than dozens of binary constraints
+1. **Use Built-in Constraints**: Pre-optimized functions are faster than equivalent lambdas
+2. **Strategic Domain Reduction**: Limit initial domains as much as possible
+3. **Constraint Ordering**: Add most restrictive constraints first
+4. **Choose Appropriate Constraint Types**: Use binary constraints for 2-variable rules
+5. **Consider Problem Structure**: Add strategic "clues" to reduce search space
+
+### Performance Comparison
+
+```dart
+// Slower: Custom lambda
+p.addConstraint(['A', 'B', 'C'], (assignment) {
+  final values = assignment.values.toSet();
+  return values.length == assignment.length;
+});
+
+// Faster: Built-in constraint
+p.addAllDifferent(['A', 'B', 'C']);
+
+// Even faster: Binary constraint for 2 variables
+p.addConstraint(['A', 'B'], allDifferentBinary());
+```
 
 ## Contributing
 
 Contributions are welcome! This library builds upon the excellent foundation of [csp.js](https://github.com/PrajitR/jusCSP) by Prajit Ramachandran.
+
+### Development Setup
+
+1. Clone the repository
+2. Run the demo: `dart run demo.dart`
+3. Run tests: `dart test` (if test suite exists)
+4. Add new constraint types to the built-in library
+5. Update documentation and examples
 
 ## License
 

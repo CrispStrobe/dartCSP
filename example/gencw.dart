@@ -1,3 +1,98 @@
+/// gencw.dart - A Command-Line Math Crossword Puzzle Generator & Solver
+///
+/// This script procedurally generates unique math crossword puzzles, formulates them
+/// as Constraint Satisfaction Problems (CSPs), and uses a backtracking solver to find a solution.
+/// The generator is robust, retrying if a generated puzzle is proven to be unsolvable
+/// or too complex to solve within a given timeout.
+///
+/// --------------------------------------------------------------------------
+/// USAGE
+/// --------------------------------------------------------------------------
+/// Run the script from your terminal using the Dart VM:
+///
+///   dart gencw.dart [OPTIONS]
+///
+/// --------------------------------------------------------------------------
+/// OPTIONS
+/// --------------------------------------------------------------------------
+///
+/// --range=MIN-MAX
+///   Sets the inclusive range of numbers that can appear in the puzzle cells.
+///   - Format: Two integers separated by a hyphen.
+///   - Example: --range=2-20
+///   - Default: --range=1-9
+///
+/// --ops=[+,-,*,/]
+///   Defines the set of allowed mathematical operations for the equations.
+///   - Format: A comma-separated list of symbols. Use quotes if needed.
+///   - Note: Use '-', not '−'. The script will convert it internally.
+///   - Example: --ops=+,-,*,/
+///   - Default: --ops=+,-,*,/ (all operations)
+///
+/// --edges=N
+///   Controls the size and complexity of the generated puzzle grid. Higher numbers
+///   result in more equations and a more sprawling pattern.
+///   - Format: A single positive integer.
+///   - Example: --edges=10
+///   - Default: --edges=8
+///
+/// --clues=N
+///   The number of cells to pre-fill with values before solving. Clues are
+///   placed intelligently to provide maximum constraint and ensure diversity.
+///   - Format: A single non-negative integer.
+///   - Example: --clues=5
+///   - Default: --clues=0
+///
+/// --nodups
+///   A flag that enforces a global constraint where every number in the solution
+///   must be unique. This makes the puzzle significantly harder to solve.
+///   - Format: Just the flag, no value.
+///   - Example: --nodups
+///   - Default: Duplicates are allowed.
+///
+/// --timeout=S
+///   The maximum time in seconds to allow the CSP solver to search for a solution.
+///   If a solution isn't found in this time, the puzzle is discarded and the
+///   generator will try again.
+///   - Format: A single positive integer.
+///   - Example: --timeout=60
+///   - Default: --timeout=30
+///
+/// --------------------------------------------------------------------------
+/// EXAMPLES
+/// --------------------------------------------------------------------------
+///
+/// 1. Generate a simple, small puzzle with default settings:
+///    dart gencw.dart
+///
+/// 2. Generate a medium puzzle using only addition and subtraction with 3 clues:
+///    dart gencw.dart --range=2-20 --ops=+,- --clues=3
+///
+/// 3. Generate a large, very difficult puzzle where all numbers must be unique
+///    and give the solver up to 2 minutes to find a solution:
+///    dart gencw.dart --range=10-99 --edges=12 --clues=5 --nodups --timeout=120
+///
+/// --------------------------------------------------------------------------
+/// HOW IT WORKS
+/// --------------------------------------------------------------------------
+///
+/// The script follows a four-step process, looping until a solvable puzzle is found:
+///
+/// 1. Pattern Generation: A random walker algorithm creates a grid pattern of
+///    interlocking horizontal and vertical lines of 5 squares.
+///
+/// 2. Clue Placement: If clues are requested, the script identifies the most
+///    mathematically constraining positions (the "Power Positions") within a
+///    diverse set of equations to maximize their impact on the solver.
+///
+/// 3. CSP Formulation: The grid is parsed into a set of variables (the empty
+///    cells) and constraints (the equations and global rules like --nodups).
+///
+/// 4. Solving: The formulated problem is passed to a powerful backtracking CSP
+///    solver which searches for a valid assignment of numbers to cells. If it
+///    fails or times out, the entire process repeats.
+///
+
 import 'dart:io';
 import 'dart:math';
 import 'package:dart_csp/dart_csp.dart';

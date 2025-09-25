@@ -20,6 +20,97 @@
 
 import 'dart:async';
 
+// ------------------- Type Definitions -------------------
+
+/// Type definition for a binary constraint predicate.
+///
+/// It takes the value of a 'head' variable and a 'tail' variable and returns
+/// true if the constraint is satisfied between them. This defines a directed
+/// arc from head to tail.
+typedef BinaryPredicate = bool Function(dynamic headVal, dynamic tailVal);
+
+/// Type definition for an n-ary constraint predicate.
+///
+/// It takes a map representing a partial assignment of variables to values
+/// and returns true if the constraint is satisfied for that combination.
+typedef NaryPredicate = bool Function(Map<String, dynamic> assignment);
+
+/// Type definition for the optional callback function during the search.
+///
+/// This can be used for visualizing the search process, showing the state of
+/// assigned and unassigned variable domains at each step of the backtracking.
+typedef CspCallback = void Function(
+    Map<String, List<dynamic>> assigned, Map<String, List<dynamic>> unassigned);
+
+// ------------------- Problem Components -------------------
+
+/// Represents a binary constraint between two variables, forming a directed arc.
+///
+/// For a constraint like `A > B`, you might have one `BinaryConstraint` for the
+/// arc A -> B and another for B -> A to enforce full consistency.
+class BinaryConstraint {
+  /// The "source" variable in the directed constraint arc.
+  final String head;
+
+  /// The "destination" variable in the directed constraint arc.
+  final String tail;
+
+  /// The function that evaluates the constraint between a value from the head's
+  /// domain and a value from the tail's domain.
+  final BinaryPredicate predicate;
+
+  BinaryConstraint(this.head, this.tail, this.predicate);
+}
+
+/// Represents an n-ary constraint involving two or more variables.
+///
+/// This is used for complex constraints that cannot be broken down into simple
+/// binary relationships, such as `A + B = C`.
+class NaryConstraint {
+  /// The list of variable names involved in this constraint.
+  final List<String> vars;
+
+  /// The function that evaluates if a complete assignment for the involved
+  /// variables satisfies the constraint.
+  final NaryPredicate predicate;
+
+  NaryConstraint({required this.vars, required this.predicate});
+}
+
+/// Represents the full definition of a Constraint Satisfaction Problem.
+///
+/// This class encapsulates all the necessary components of a CSP: the variables,
+/// their domains, and the constraints that bind them.
+class CspProblem {
+  /// A map where keys are variable names and values are lists (domains) of
+  /// their possible values.
+  Map<String, List<dynamic>> variables;
+
+  /// A list of binary constraints restricting pairs of variables.
+  List<BinaryConstraint> constraints;
+
+  /// A list of n-ary constraints restricting groups of variables.
+  List<NaryConstraint> naryConstraints;
+
+  /// The delay in milliseconds between steps, used if a [cb] callback is provided.
+  int timeStep;
+
+  /// An optional callback function invoked at each step of the search for visualization.
+  CspCallback? cb;
+
+  /// Internal index mapping each variable to the n-ary constraints it participates in.
+  /// This is built by the solver to speed up the GAC algorithm.
+  Map<String, List<NaryConstraint>>? _naryIndex;
+
+  CspProblem({
+    required this.variables,
+    this.constraints = const [],
+    this.naryConstraints = const [],
+    this.timeStep = 1,
+    this.cb,
+  });
+}
+
 // ------------------- Problem Builder -------------------
 
 /// A user-friendly wrapper class to build a constraint satisfaction problem.
@@ -150,98 +241,6 @@ class Problem {
     );
     return CSP.solve(problem);
   }
-}
-
-
-// ------------------- Type Definitions -------------------
-
-/// Type definition for a binary constraint predicate.
-///
-/// It takes the value of a 'head' variable and a 'tail' variable and returns
-/// true if the constraint is satisfied between them. This defines a directed
-/// arc from head to tail.
-typedef BinaryPredicate = bool Function(dynamic headVal, dynamic tailVal);
-
-/// Type definition for an n-ary constraint predicate.
-///
-/// It takes a map representing a partial assignment of variables to values
-/// and returns true if the constraint is satisfied for that combination.
-typedef NaryPredicate = bool Function(Map<String, dynamic> assignment);
-
-/// Type definition for the optional callback function during the search.
-///
-/// This can be used for visualizing the search process, showing the state of
-/// assigned and unassigned variable domains at each step of the backtracking.
-typedef CspCallback = void Function(
-    Map<String, List<dynamic>> assigned, Map<String, List<dynamic>> unassigned);
-
-// ------------------- Problem Components -------------------
-
-/// Represents a binary constraint between two variables, forming a directed arc.
-///
-/// For a constraint like `A > B`, you might have one `BinaryConstraint` for the
-/// arc A -> B and another for B -> A to enforce full consistency.
-class BinaryConstraint {
-  /// The "source" variable in the directed constraint arc.
-  final String head;
-
-  /// The "destination" variable in the directed constraint arc.
-  final String tail;
-
-  /// The function that evaluates the constraint between a value from the head's
-  /// domain and a value from the tail's domain.
-  final BinaryPredicate predicate;
-
-  BinaryConstraint(this.head, this.tail, this.predicate);
-}
-
-/// Represents an n-ary constraint involving two or more variables.
-///
-/// This is used for complex constraints that cannot be broken down into simple
-/// binary relationships, such as `A + B = C`.
-class NaryConstraint {
-  /// The list of variable names involved in this constraint.
-  final List<String> vars;
-
-  /// The function that evaluates if a complete assignment for the involved
-  /// variables satisfies the constraint.
-  final NaryPredicate predicate;
-
-  NaryConstraint({required this.vars, required this.predicate});
-}
-
-/// Represents the full definition of a Constraint Satisfaction Problem.
-///
-/// This class encapsulates all the necessary components of a CSP: the variables,
-/// their domains, and the constraints that bind them.
-class CspProblem {
-  /// A map where keys are variable names and values are lists (domains) of
-  /// their possible values.
-  Map<String, List<dynamic>> variables;
-
-  /// A list of binary constraints restricting pairs of variables.
-  List<BinaryConstraint> constraints;
-
-  /// A list of n-ary constraints restricting groups of variables.
-  List<NaryConstraint> naryConstraints;
-
-  /// The delay in milliseconds between steps, used if a [cb] callback is provided.
-  int timeStep;
-
-  /// An optional callback function invoked at each step of the search for visualization.
-  CspCallback? cb;
-
-  /// Internal index mapping each variable to the n-ary constraints it participates in.
-  /// This is built by the solver to speed up the GAC algorithm.
-  Map<String, List<NaryConstraint>>? _naryIndex;
-
-  CspProblem({
-    required this.variables,
-    this.constraints = const [],
-    this.naryConstraints = const [],
-    this.timeStep = 1,
-    this.cb,
-  });
 }
 
 // ------------------- The Solver -------------------
@@ -704,6 +703,404 @@ class CSP {
               'N-ary constraint references unknown variable "$v"');
         }
       }
+    }
+  }
+}
+
+// ------------------- Built-in Constraint Factory Functions -------------------
+
+/// Built-in constraint factory functions for common CSP constraint types.
+/// These are much faster than generic lambda functions and provide better
+/// error messages and debugging support.
+
+/// Creates a constraint ensuring all variables have different values
+/// 
+/// This is one of the most common constraints in CSP problems.
+/// Examples: Sudoku rows/columns, N-Queens, graph coloring
+/// 
+/// Usage:
+/// ```dart
+/// final p = Problem();
+/// p.addVariables(['A', 'B', 'C'], [1, 2, 3]);
+/// p.addConstraint(['A', 'B', 'C'], allDifferent());
+/// ```
+NaryPredicate allDifferent() {
+  return (Map<String, dynamic> assignment) {
+    final values = assignment.values.toSet();
+    return values.length == assignment.length; // All values must be unique
+  };
+}
+
+/// Creates a binary all-different constraint for exactly 2 variables
+/// More efficient than the n-ary version for 2 variables
+BinaryPredicate allDifferentBinary() {
+  return (dynamic a, dynamic b) => a != b;
+}
+
+/// Creates a constraint ensuring all variables have the same value
+/// 
+/// Examples: Ensuring consistent settings across components
+/// 
+/// Usage:
+/// ```dart
+/// p.addConstraint(['X', 'Y', 'Z'], allEqual());
+/// ```
+NaryPredicate allEqual() {
+  return (Map<String, dynamic> assignment) {
+    if (assignment.isEmpty) return true;
+    
+    final firstValue = assignment.values.first;
+    return assignment.values.every((value) => value == firstValue);
+  };
+}
+
+/// Binary version for exactly 2 variables
+BinaryPredicate allEqualBinary() {
+  return (dynamic a, dynamic b) => a == b;
+}
+
+/// Creates a constraint ensuring variables sum to an exact value
+/// 
+/// Examples: Magic squares, resource allocation with exact budget
+/// 
+/// Usage:
+/// ```dart
+/// p.addConstraint(['A', 'B', 'C'], exactSum(15));
+/// p.addConstraint(['X', 'Y'], exactSum(10, multipliers: [2, 3])); // 2*X + 3*Y = 10
+/// ```
+NaryPredicate exactSum(num targetSum, {List<num>? multipliers}) {
+  return (Map<String, dynamic> assignment) {
+    if (assignment.isEmpty) return targetSum == 0;
+    
+    num sum = 0;
+    int index = 0;
+    
+    for (final value in assignment.values) {
+      final multiplier = multipliers?[index] ?? 1;
+      sum += value * multiplier;
+      index++;
+    }
+    
+    return sum == targetSum;
+  };
+}
+
+/// Creates a constraint ensuring variables sum to at least a minimum value
+NaryPredicate minSum(num minimumSum, {List<num>? multipliers}) {
+  return (Map<String, dynamic> assignment) {
+    if (assignment.isEmpty) return minimumSum <= 0;
+    
+    num sum = 0;
+    int index = 0;
+    
+    for (final value in assignment.values) {
+      final multiplier = multipliers?[index] ?? 1;
+      sum += value * multiplier;
+      index++;
+    }
+    
+    return sum >= minimumSum;
+  };
+}
+
+/// Creates a constraint ensuring variables sum to at most a maximum value
+NaryPredicate maxSum(num maximumSum, {List<num>? multipliers}) {
+  return (Map<String, dynamic> assignment) {
+    if (assignment.isEmpty) return true;
+    
+    num sum = 0;
+    int index = 0;
+    
+    for (final value in assignment.values) {
+      final multiplier = multipliers?[index] ?? 1;
+      sum += value * multiplier;
+      index++;
+    }
+    
+    return sum <= maximumSum;
+  };
+}
+
+/// Creates a constraint ensuring variables sum within a range
+NaryPredicate sumInRange(num minSum, num maxSum, {List<num>? multipliers}) {
+  return (Map<String, dynamic> assignment) {
+    if (assignment.isEmpty) return minSum <= 0 && maxSum >= 0;
+    
+    num sum = 0;
+    int index = 0;
+    
+    for (final value in assignment.values) {
+      final multiplier = multipliers?[index] ?? 1;
+      sum += value * multiplier;
+      index++;
+    }
+    
+    return sum >= minSum && sum <= maxSum;
+  };
+}
+
+// Binary versions of sum constraints for 2-variable optimization
+BinaryPredicate exactSumBinary(num targetSum, {List<num>? multipliers}) {
+  final m1 = multipliers?[0] ?? 1;
+  final m2 = multipliers?[1] ?? 1;
+  return (dynamic a, dynamic b) => (a * m1 + b * m2) == targetSum;
+}
+
+BinaryPredicate minSumBinary(num minimumSum, {List<num>? multipliers}) {
+  final m1 = multipliers?[0] ?? 1;
+  final m2 = multipliers?[1] ?? 1;
+  return (dynamic a, dynamic b) => (a * m1 + b * m2) >= minimumSum;
+}
+
+BinaryPredicate maxSumBinary(num maximumSum, {List<num>? multipliers}) {
+  final m1 = multipliers?[0] ?? 1;
+  final m2 = multipliers?[1] ?? 1;
+  return (dynamic a, dynamic b) => (a * m1 + b * m2) <= maximumSum;
+}
+
+BinaryPredicate sumInRangeBinary(num minSum, num maxSum, {List<num>? multipliers}) {
+  final m1 = multipliers?[0] ?? 1;
+  final m2 = multipliers?[1] ?? 1;
+  return (dynamic a, dynamic b) {
+    final sum = a * m1 + b * m2;
+    return sum >= minSum && sum <= maxSum;
+  };
+}
+
+BinaryPredicate exactProductBinary(num targetProduct) {
+  return (dynamic a, dynamic b) => (a * b) == targetProduct;
+}
+
+BinaryPredicate minProductBinary(num minimumProduct) {
+  return (dynamic a, dynamic b) => (a * b) >= minimumProduct;
+}
+
+BinaryPredicate maxProductBinary(num maximumProduct) {
+  return (dynamic a, dynamic b) => (a * b) <= maximumProduct;
+}
+
+/// Creates a constraint ensuring variables multiply to an exact value
+NaryPredicate exactProduct(num targetProduct) {
+  return (Map<String, dynamic> assignment) {
+    if (assignment.isEmpty) return targetProduct == 1;
+    
+    num product = 1;
+    for (final value in assignment.values) {
+      product *= value;
+    }
+    
+    return product == targetProduct;
+  };
+}
+
+/// Creates a constraint ensuring variables multiply to at least a minimum
+NaryPredicate minProduct(num minimumProduct) {
+  return (Map<String, dynamic> assignment) {
+    if (assignment.isEmpty) return minimumProduct <= 1;
+    
+    num product = 1;
+    for (final value in assignment.values) {
+      product *= value;
+    }
+    
+    return product >= minimumProduct;
+  };
+}
+
+/// Creates a constraint ensuring variables multiply to at most a maximum
+NaryPredicate maxProduct(num maximumProduct) {
+  return (Map<String, dynamic> assignment) {
+    if (assignment.isEmpty) return true;
+    
+    num product = 1;
+    for (final value in assignment.values) {
+      product *= value;
+    }
+    
+    return product <= maximumProduct;
+  };
+}
+
+/// Creates a constraint ensuring all variables take values from allowed set
+NaryPredicate inSet(Set<dynamic> allowedValues) {
+  return (Map<String, dynamic> assignment) {
+    return assignment.values.every((value) => allowedValues.contains(value));
+  };
+}
+
+/// Creates a constraint ensuring no variables take values from forbidden set  
+NaryPredicate notInSet(Set<dynamic> forbiddenValues) {
+  return (Map<String, dynamic> assignment) {
+    return assignment.values.every((value) => !forbiddenValues.contains(value));
+  };
+}
+
+// Binary versions of set membership constraints for 2-variable optimization
+BinaryPredicate inSetBinary(Set<dynamic> allowedValues) {
+  return (dynamic a, dynamic b) => allowedValues.contains(a) && allowedValues.contains(b);
+}
+
+BinaryPredicate notInSetBinary(Set<dynamic> forbiddenValues) {
+  return (dynamic a, dynamic b) => !forbiddenValues.contains(a) && !forbiddenValues.contains(b);
+}
+
+/// Creates a constraint ensuring at least N variables have values in the set
+NaryPredicate someInSet(Set<dynamic> values, int minimumCount) {
+  return (Map<String, dynamic> assignment) {
+    final count = assignment.values.where((value) => values.contains(value)).length;
+    return count >= minimumCount;
+  };
+}
+
+/// Creates a constraint ensuring at least N variables have values NOT in the set
+NaryPredicate someNotInSet(Set<dynamic> values, int minimumCount) {
+  return (Map<String, dynamic> assignment) {
+    final count = assignment.values.where((value) => !values.contains(value)).length;
+    return count >= minimumCount;
+  };
+}
+
+/// Creates a constraint ensuring variables are in ascending order
+NaryPredicate ascendingInOrder(List<String> variableOrder) {
+  return (Map<String, dynamic> assignment) {
+    for (int i = 1; i < variableOrder.length; i++) {
+      if (assignment[variableOrder[i]] < assignment[variableOrder[i-1]]) {
+        return false;
+      }
+    }
+    return true;
+  };
+}
+
+/// Creates a constraint ensuring variables are in strictly ascending order  
+NaryPredicate strictlyAscendingInOrder(List<String> variableOrder) {
+  return (Map<String, dynamic> assignment) {
+    for (int i = 1; i < variableOrder.length; i++) {
+      if (assignment[variableOrder[i]] <= assignment[variableOrder[i-1]]) {
+        return false;
+      }
+    }
+    return true;
+  };
+}
+
+/// Creates a constraint ensuring variables are in descending order
+NaryPredicate descendingInOrder(List<String> variableOrder) {
+  return (Map<String, dynamic> assignment) {
+    for (int i = 1; i < variableOrder.length; i++) {
+      if (assignment[variableOrder[i]] > assignment[variableOrder[i-1]]) {
+        return false;
+      }
+    }
+    return true;
+  };
+}
+
+// Binary versions of ordering constraints for 2-variable optimization
+BinaryPredicate ascendingBinary() {
+  return (dynamic a, dynamic b) => a <= b;
+}
+
+BinaryPredicate strictlyAscendingBinary() {
+  return (dynamic a, dynamic b) => a < b;
+}
+
+BinaryPredicate descendingBinary() {
+  return (dynamic a, dynamic b) => a >= b;
+}
+
+// ------------------- Convenience Extension Methods -------------------
+
+/// Extension methods for Problem class to make using built-in constraints easier
+extension BuiltinConstraints on Problem {
+  
+  /// Add an all-different constraint
+  void addAllDifferent(List<String> variables) {
+    if (variables.length == 2) {
+      addConstraint(variables, allDifferentBinary());
+    } else {
+      addConstraint(variables, allDifferent());
+    }
+  }
+  
+  /// Add an all-equal constraint
+  void addAllEqual(List<String> variables) {
+    if (variables.length == 2) {
+      addConstraint(variables, allEqualBinary());
+    } else {
+      addConstraint(variables, allEqual());
+    }
+  }
+  
+  /// Add an exact sum constraint
+  void addExactSum(List<String> variables, num targetSum, {List<num>? multipliers}) {
+    if (variables.length == 2) {
+      addConstraint(variables, exactSumBinary(targetSum, multipliers: multipliers));
+    } else {
+      addConstraint(variables, exactSum(targetSum, multipliers: multipliers));
+    }
+  }
+  
+  /// Add a sum range constraint
+  void addSumRange(List<String> variables, num minSum, num maxSum, {List<num>? multipliers}) {
+    if (variables.length == 2) {
+      addConstraint(variables, sumInRangeBinary(minSum, maxSum, multipliers: multipliers));
+    } else {
+      addConstraint(variables, sumInRange(minSum, maxSum, multipliers: multipliers));
+    }
+  }
+  
+  /// Add an exact product constraint
+  void addExactProduct(List<String> variables, num targetProduct) {
+    if (variables.length == 2) {
+      addConstraint(variables, exactProductBinary(targetProduct));
+    } else {
+      addConstraint(variables, exactProduct(targetProduct));
+    }
+  }
+  
+  /// Add an in-set constraint (variables must take values from allowed set)
+  void addInSet(List<String> variables, Set<dynamic> allowedValues) {
+    if (variables.length == 2) {
+      addConstraint(variables, inSetBinary(allowedValues));
+    } else {
+      addConstraint(variables, inSet(allowedValues));
+    }
+  }
+  
+  /// Add a not-in-set constraint (variables cannot take values from forbidden set)
+  void addNotInSet(List<String> variables, Set<dynamic> forbiddenValues) {
+    if (variables.length == 2) {
+      addConstraint(variables, notInSetBinary(forbiddenValues));
+    } else {
+      addConstraint(variables, notInSet(forbiddenValues));
+    }
+  }
+  
+  /// Add an ordering constraint (variables in ascending order)
+  void addAscending(List<String> variables) {
+    if (variables.length == 2) {
+      addConstraint(variables, ascendingBinary());
+    } else {
+      addConstraint(variables, ascendingInOrder(variables));
+    }
+  }
+  
+  /// Add a strict ordering constraint (variables in strictly ascending order)
+  void addStrictlyAscending(List<String> variables) {
+    if (variables.length == 2) {
+      addConstraint(variables, strictlyAscendingBinary());
+    } else {
+      addConstraint(variables, strictlyAscendingInOrder(variables));
+    }
+  }
+  
+  /// Add a descending order constraint
+  void addDescending(List<String> variables) {
+    if (variables.length == 2) {
+      addConstraint(variables, descendingBinary());
+    } else {
+      addConstraint(variables, descendingInOrder(variables));
     }
   }
 }

@@ -663,7 +663,8 @@ lib/
 example/
 ├── demo.dart                     # Comprehensive demo of all features
 ├── usage_examples.dart           # Complete usage examples for all APIs
-└── gencw.dart                    # Advanced arithmetic square puzzle generator
+├── gencw.dart                    # Advanced arithmetic crosswords puzzle generator
+└── gensq.dart                    # Advanced arithmetic square puzzle generator
 
 test/
 └── dart_csp_test.dart           # Comprehensive test suite

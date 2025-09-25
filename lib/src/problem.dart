@@ -31,6 +31,11 @@ import 'constraint_parser.dart';
 /// } else {
 ///   print("No solution found!");
 /// }
+///
+/// // 4. Or get all solutions
+/// await for (final solution in p.getSolutions()) {
+///   print("Found solution: $solution");
+/// }
 /// ```
 class Problem {
   final Map<String, List<dynamic>> _variables = {};
@@ -133,6 +138,36 @@ class Problem {
       cb: _cb,
     );
     return CSP.solve(problem);
+  }
+
+  /// Solves the problem and returns a stream of all solutions found.
+  ///
+  /// Assembles a [CspProblem] object from the added variables and constraints
+  /// and uses the backtracking generator to find all valid assignments.
+  ///
+  /// Returns a [Stream] which emits a `Map<String, dynamic>` for each solution.
+  /// If no solutions exist, the stream will be empty.
+  ///
+  /// ### Usage Example
+  /// ```dart
+  /// final p = Problem();
+  /// p.addVariables(['A', 'B'], [1, 2, 3]);
+  /// p.addStringConstraint('A < B');
+  /// 
+  /// print('All solutions where A < B:');
+  /// await for (final solution in p.getSolutions()) {
+  ///   print(solution);
+  /// }
+  /// ```
+  Stream<Map<String, dynamic>> getSolutions() {
+    final problem = CspProblem(
+      variables: _variables,
+      constraints: _constraints,
+      naryConstraints: _naryConstraints,
+      // timeStep and cb are less relevant for streaming all solutions
+      // as the callback would be called too frequently
+    );
+    return CSP.solveAll(problem);
   }
 
   /// Gets all variables and their current domains
@@ -354,5 +389,93 @@ extension ProblemDebug on Problem {
     }
     
     return issues;
+  }
+}
+
+/// Extension providing utilities for working with multiple solutions
+extension MultipleSolutions on Problem {
+  
+  /// Get all solutions as a List (convenience method for small solution sets)
+  /// 
+  /// Warning: This will collect all solutions in memory. For problems with
+  /// many solutions, prefer using getSolutions() stream directly.
+  ///
+  /// Example:
+  /// ```dart
+  /// final solutions = await p.getAllSolutions();
+  /// print('Found ${solutions.length} solutions');
+  /// for (final solution in solutions) {
+  ///   print(solution);
+  /// }
+  /// ```
+  Future<List<Map<String, dynamic>>> getAllSolutions() async {
+    final solutions = <Map<String, dynamic>>[];
+    await for (final solution in getSolutions()) {
+      solutions.add(solution);
+    }
+    return solutions;
+  }
+  
+  /// Count the total number of solutions without storing them
+  /// 
+  /// This is memory-efficient for problems with many solutions.
+  ///
+  /// Example:
+  /// ```dart
+  /// final count = await p.countSolutions();
+  /// print('This problem has $count solutions');
+  /// ```
+  Future<int> countSolutions() async {
+    int count = 0;
+    await for (final _ in getSolutions()) {
+      count++;
+    }
+    return count;
+  }
+  
+  /// Check if multiple solutions exist without finding them all
+  /// 
+  /// This stops after finding the second solution, making it efficient
+  /// for determining if a problem has a unique solution.
+  ///
+  /// Example:
+  /// ```dart
+  /// final hasMultiple = await p.hasMultipleSolutions();
+  /// if (hasMultiple) {
+  ///   print('Problem has multiple solutions');
+  /// } else {
+  ///   print('Problem has at most one solution');
+  /// }
+  /// ```
+  Future<bool> hasMultipleSolutions() async {
+    int count = 0;
+    await for (final _ in getSolutions()) {
+      count++;
+      if (count >= 2) return true;
+    }
+    return false;
+  }
+  
+  /// Get the first N solutions
+  /// 
+  /// This is useful when you want to see a few examples without processing all solutions.
+  ///
+  /// Example:
+  /// ```dart
+  /// final firstFive = await p.getFirstNSolutions(5);
+  /// print('First 5 solutions:');
+  /// for (final solution in firstFive) {
+  ///   print(solution);
+  /// }
+  /// ```
+  Future<List<Map<String, dynamic>>> getFirstNSolutions(int n) async {
+    final solutions = <Map<String, dynamic>>[];
+    int count = 0;
+    await for (final solution in getSolutions()) {
+      solutions.add(solution);
+      count++;
+      if (count >= n) break;
+    }
+    return solutions;
   }
 }

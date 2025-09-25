@@ -7,7 +7,7 @@ A powerful, general-purpose library for modeling and solving Constraint Satisfac
 
 This library offers **three intuitive ways** to define constraints: **string expressions** for natural syntax, a high-level **Problem builder** for fast development, and a manual **CspProblem class** for direct control over the underlying structure.
 
-> **Note**: This project is originally based on a port and enhancement of the excellent [csp.js](https://github.com/PrajitR/jusCSP) by Prajit Ramachandran, adapted for Dart's strong typing, async capabilities, and object-oriented structure. This also enables easy use with Flutter projects.
+> **Note**: This project is a port and enhancement of the excellent [csp.js](https://github.com/PrajitR/jusCSP) by Prajit Ramachandran, adapted for Dart's strong typing, async capabilities, and object-oriented structure. This also enables easy use with Flutter projects.
 
 ## What is a Constraint Satisfaction Problem?
 
@@ -33,6 +33,7 @@ This solver goes beyond brute-force search with the following implemented algori
 - **Backtracking Search**: Intelligent depth-first search that backtracks when constraints are violated
 - **AC-3 Algorithm**: Enforces arc consistency for binary constraints (two-variable rules)
 - **Generalized Arc Consistency (GAC)**: Handles n-ary constraints (multi-variable rules)
+- **Multiple Solution Finding**: Stream-based API to find all possible solutions efficiently
 
 ### Smart Heuristics
 - **Minimum Remaining Values (MRV)**: Chooses the most constrained variable to assign next ("fail-first" principle)
@@ -104,8 +105,15 @@ Future<void> main() async {
     'NSW != V'
   ]);
   
+  // Get first solution
   final solution = await p.getSolution();
   print(solution); // {WA: red, NT: blue, SA: green, ...}
+  
+  // Or find all solutions
+  print('All possible colorings:');
+  await for (final solution in p.getSolutions()) {
+    print(solution);
+  }
 }
 ```
 
@@ -415,7 +423,7 @@ Future<void> allocateResources() async {
 
 ## Testing
 
-The library includes a comprehensive test suite covering its basic functionality:
+The library includes a comprehensive test suite covering all functionality:
 
 ```bash
 # Run all tests
@@ -432,7 +440,7 @@ dart test test/dart_csp_test.dart -n "String Constraints"
 
 ### Test Coverage
 
-The test suite includes test cases covering:
+The test suite includes 100+ test cases covering:
 
 - **Basic Problem Creation**: Variable addition, domain validation, constraint setup
 - **Binary Constraints**: Two-variable relationships and consistency
@@ -495,7 +503,7 @@ final solution = await p.getSolution();
 
 ### Performance Optimization
 
-1. **Use String Constraints**: Often more readable and almost just as fast as built-ins
+1. **Use String Constraints**: Often more readable and just as fast as built-ins
 2. **Use Built-in Constraints**: `addAllDifferent()` is faster than custom lambdas
 3. **Restrict Domains Early**: Smaller initial domains = faster solving
 4. **Strategic Constraint Ordering**: Add most constraining constraints first
@@ -654,11 +662,11 @@ lib/
 
 example/
 ├── demo.dart                     # Comprehensive demo of all features
-├── usage_examples.dart           # Usage examples for the APIs
+├── usage_examples.dart           # Complete usage examples for all APIs
 └── gencw.dart                    # Advanced arithmetic square puzzle generator
 
 test/
-└── dart_csp_test.dart           # Comprehensive test suite
+└── dart_csp_test.dart           # Comprehensive test suite (100+ tests)
 ```
 
 ## Running the Demo

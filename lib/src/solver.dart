@@ -48,6 +48,32 @@ class CSP {
     return result;
   }
 
+  /// Solves the given CSP and returns a stream of all solutions.
+  ///
+  /// This method finds all possible solutions to the constraint satisfaction problem
+  /// and yields them as a stream. This is useful for problems where you need to
+  /// explore multiple solutions or find the optimal one among all possibilities.
+  ///
+  /// Returns a [Stream] that emits each solution as a `Map<String, dynamic>`.
+  /// If no solutions exist, the stream will be empty.
+  static Stream<Map<String, dynamic>> solveAll(CspProblem csp) async* {
+    _stepCounter = 0;
+    _validateProblem(csp);
+    csp.naryIndex = _buildNaryIndex(csp.naryConstraints);
+
+    // Start the recursive backtracking search with an empty assignment.
+    final solutionStream = _backtrackAll({}, _cloneVars(csp.variables), csp);
+
+    // Yield each solution from the stream after unwrapping the domain lists.
+    await for (final solution in solutionStream) {
+      final unwrappedResult = <String, dynamic>{};
+      solution.forEach((key, value) {
+        unwrappedResult[key] = (value.isNotEmpty) ? value[0] : null;
+      });
+      yield unwrappedResult;
+    }
+  }
+
   /// The core recursive backtracking algorithm.
   ///
   /// Backtracking is a depth-first search (DFS) through the space of possible
@@ -141,6 +167,90 @@ class CSP {
       unassigned[nextKey] = savedDomain;
     }
     return _failure;
+  }
+
+  /// The core recursive backtracking algorithm modified to be a generator.
+  ///
+  /// This version doesn't stop after the first solution. Instead, it yields each
+  /// solution it finds and continues searching the rest of the tree. This allows
+  /// finding all possible solutions to a constraint satisfaction problem.
+  ///
+  /// The algorithm follows the same structure as the single-solution version but
+  /// uses `yield` to emit solutions and `yield*` to pass through all solutions
+  /// from recursive calls.
+  static Stream<Map<String, List<dynamic>>> _backtrackAll(
+      Map<String, List<dynamic>> assigned,
+      Map<String, List<dynamic>> unassigned,
+      CspProblem csp) async* {
+    // Base case: If there are no unassigned variables, a complete and valid
+    // solution has been found.
+    if (_finished(unassigned)) {
+      yield assigned; // Yield the solution instead of returning it
+      return; // Stop this path, but allow the caller to continue
+    }
+
+    // Heuristic 1: Select which variable to assign next.
+    final nextKey = _selectUnassignedVariable(unassigned);
+    if (nextKey == null) {
+      // Should not happen if _finished is false, but acts as a safeguard.
+      return;
+    }
+
+    // Heuristic 2: Order the values of the chosen variable.
+    final values = _orderValues(nextKey, assigned, unassigned, csp);
+
+    final savedDomain = unassigned[nextKey];
+    unassigned.remove(nextKey);
+
+    // Iterate through the chosen values for the selected variable.
+    for (final value in values) {
+      _stepCounter++;
+      final currentAssignment = _cloneVars(assigned);
+      currentAssignment[nextKey] = [value];
+
+      // Forward checking: enforce consistency to see the impact on other variables.
+      final consistentVars =
+          _enforceConsistency(currentAssignment, unassigned, csp);
+
+      // If consistency enforcement leads to a contradiction, skip to the next value.
+      if (consistentVars == _failure) {
+        continue;
+      }
+
+      final consistentMap = consistentVars as Map<String, List<dynamic>>;
+
+      // Prepare the state for the recursive call.
+      final newAssigned = <String, List<dynamic>>{};
+      final newUnassigned = <String, List<dynamic>>{};
+      consistentMap.forEach((key, value) {
+        if (currentAssignment.containsKey(key)) {
+          newAssigned[key] = List<dynamic>.from(value);
+        } else {
+          newUnassigned[key] = List<dynamic>.from(value);
+        }
+      });
+
+      // Optional callback for visualizing the search step (less common for all-solutions)
+      if (csp.cb != null) {
+        await Future.delayed(
+            Duration(milliseconds: _stepCounter * csp.timeStep),
+            () => csp.cb!(newAssigned, newUnassigned));
+      }
+
+      // If any domain has become empty, this path is invalid.
+      if (_anyEmpty(consistentMap)) {
+        continue;
+      }
+
+      // Recurse and yield all solutions found down this path.
+      // The 'yield*' keyword is used to yield all items from the sub-stream.
+      yield* _backtrackAll(newAssigned, newUnassigned, csp);
+    }
+
+    // Restore state for backtracking
+    if (savedDomain != null) {
+      unassigned[nextKey] = savedDomain;
+    }
   }
 
   // ---------------- Consistency Algorithms ----------------

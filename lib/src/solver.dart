@@ -1,4 +1,4 @@
-/// Core CSP solver with backtracking, AC-3, and GAC algorithms.
+// Core CSP solver with backtracking, AC-3, and GAC algorithms.
 
 import 'dart:async';
 import 'dart:math'; // for randomization
@@ -237,11 +237,8 @@ class CSP {
       return assigned;
     }
 
-    // Heuristic 1: Select which variable to assign next.
-    // The Minimum Remaining Values (MRV) heuristic is used here. It chooses the
-    // variable with the smallest domain, which is likely to cause a failure sooner
-    // if a wrong path is taken, thus pruning the search tree effectively.
-    final nextKey = _selectUnassignedVariable(unassigned);
+    // Enhanced Heuristic: Select which variable to assign next using MRV + Degree tie-breaking.
+    final nextKey = _selectUnassignedVariable(unassigned, csp);
     if (nextKey == null) {
       // Should not happen if _finished is false, but acts as a safeguard.
       return _failure;
@@ -338,8 +335,8 @@ class CSP {
       return; // Stop this path, but allow the caller to continue
     }
 
-    // Heuristic 1: Select which variable to assign next.
-    final nextKey = _selectUnassignedVariable(unassigned);
+    // Enhanced Heuristic: Select which variable to assign next using MRV + Degree tie-breaking.
+    final nextKey = _selectUnassignedVariable(unassigned, csp);
     if (nextKey == null) {
       // Should not happen if _finished is false, but acts as a safeguard.
       return;
@@ -598,29 +595,82 @@ class CSP {
     return dfs(0);
   }
 
-  // ---------------- Heuristics ----------------
+  // ---------------- Enhanced Heuristics ----------------
 
-  /// Selects the next unassigned variable using the MRV heuristic.
+  /// Selects the next unassigned variable using MRV with degree tie-breaking.
   ///
   /// MRV (Minimum Remaining Values) chooses the variable with the fewest
-  /// remaining legal values in its domain. This is a "fail-first" strategy:
-  /// if a mistake is to be made, it's better to make it on a highly constrained
-  /// variable where the mistake will be discovered sooner, pruning the search tree.
+  /// remaining legal values in its domain. When there are ties, degree
+  /// tie-breaking is used to select the variable with the highest degree
+  /// (most constraints).
+  ///
+  /// This is a "fail-first" strategy combined with "most-constraining-first":
+  /// - MRV: if a mistake is to be made, make it on a highly constrained variable
+  ///   where the mistake will be discovered sooner, pruning the search tree.
+  /// - Degree: among equally constrained variables, choose the one that constrains
+  ///   the most other variables, as it's more likely to help narrow the search space.
   static String? _selectUnassignedVariable(
-      Map<String, List<dynamic>> unassigned) {
-    String? minKey;
+      Map<String, List<dynamic>> unassigned, CspProblem csp) {
+    if (unassigned.isEmpty) return null;
+
+    // Find minimum domain size
     int minLen = 1 << 30; // A large number, equivalent to infinity.
     for (final entry in unassigned.entries) {
       final len = entry.value.length;
       if (len < minLen) {
-        minKey = entry.key;
         minLen = len;
         // Optimization: if a domain has only one value, it's the most
         // constrained possible, so we can select it immediately.
-        if (len == 1) break;
+        if (len == 1) return entry.key;
       }
     }
-    return minKey;
+
+    // Find all variables with minimum domain size (MRV candidates)
+    final candidates = <String>[];
+    for (final entry in unassigned.entries) {
+      if (entry.value.length == minLen) {
+        candidates.add(entry.key);
+      }
+    }
+
+    // If only one candidate, return it
+    if (candidates.length == 1) return candidates.first;
+
+    // Tie-breaking: select variable with highest degree
+    String? maxDegreeVar;
+    int maxDegree = -1;
+
+    for (final variable in candidates) {
+      final degree = _calculateDegree(variable, csp);
+      if (degree > maxDegree) {
+        maxDegree = degree;
+        maxDegreeVar = variable;
+      }
+    }
+
+    return maxDegreeVar ?? candidates.first;
+  }
+
+  /// Calculates the degree of a variable (number of constraints it participates in).
+  ///
+  /// The degree includes both binary and n-ary constraints. For binary constraints,
+  /// each constraint relationship is counted once per variable involved.
+  static int _calculateDegree(String variable, CspProblem csp) {
+    int degree = 0;
+
+    // Count binary constraints
+    for (final constraint in csp.constraints) {
+      if (constraint.head == variable || constraint.tail == variable) {
+        degree++;
+      }
+    }
+
+    // Count n-ary constraints using the pre-built index for efficiency
+    if (csp.naryIndex != null && csp.naryIndex!.containsKey(variable)) {
+      degree += csp.naryIndex![variable]!.length;
+    }
+
+    return degree;
   }
 
   /// Orders the values of a variable's domain using the LCV heuristic.
@@ -693,12 +743,6 @@ class CSP {
   /// Validates the structure and integrity of the provided CspProblem.
   static void _validateProblem(CspProblem csp) {
     final varsSet = csp.variables.keys.toSet();
-
-    /* csp.variables.forEach((v, domain) {
-      if (domain is! List) {
-        throw ArgumentError('Variable "$v" domain is not a list');
-      }
-    }); */
 
     for (final c in csp.constraints) {
       if (!varsSet.contains(c.head)) {

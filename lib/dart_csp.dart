@@ -19,6 +19,9 @@ export 'src/problem.dart';
 // CSP solver
 export 'src/solver.dart';
 
+// Configurable solver with heuristic options (for benchmarking and research)
+export 'src/configurable_solver.dart';
+
 // Built-in constraint factories
 export 'src/builtin_constraints.dart';
 

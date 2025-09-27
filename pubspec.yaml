@@ -1,7 +1,7 @@
 name: dart_csp
 description: A comprehensive Constraint Satisfaction Problem (CSP) solver with backtracking, AC-3, GAC, and string constraint parsing.
 version: 2.0.0
-repository: https://github.com/crispstrobe/dart_csp
+repository: https://github.com/CrispStrobe/dartCSP
 
 environment:
   sdk: ^3.0.0

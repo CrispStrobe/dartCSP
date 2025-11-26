@@ -275,8 +275,10 @@ class GridPatternGenerator {
       if (canWalk4Steps(currentPos, currentDirection)) {
         currentPos = walk4Steps(currentPos, currentDirection);
         int decision = random.nextInt(100);
-        List<int> turnOptions = [(currentDirection + 1) % 4, (currentDirection + 3) % 4]
-          ..shuffle(random);
+        List<int> turnOptions = [
+          (currentDirection + 1) % 4,
+          (currentDirection + 3) % 4
+        ]..shuffle(random);
 
         if (decision < 40) {
           Point<int> dir = directions[currentDirection];
@@ -304,8 +306,10 @@ class GridPatternGenerator {
           if (!foundTurn) break;
         }
       } else {
-        List<int> turnOptions = [(currentDirection + 1) % 4, (currentDirection + 3) % 4]
-          ..shuffle(random);
+        List<int> turnOptions = [
+          (currentDirection + 1) % 4,
+          (currentDirection + 3) % 4
+        ]..shuffle(random);
         bool foundTurn = false;
         for (int newDir in turnOptions) {
           if (canWalk4Steps(currentPos, newDir)) {
@@ -453,7 +457,8 @@ class AsciiRenderer {
     final maxY = allDrawableCells.map((p) => p.y).reduce(max);
     final canvasWidth = (maxX - minX + 1) * (cellWidth + 1) + 1;
     final canvasHeight = (maxY - minY + 1) * 2 + 1;
-    var canvas = List.generate(canvasHeight, (_) => List.filled(canvasWidth, ' '));
+    var canvas =
+        List.generate(canvasHeight, (_) => List.filled(canvasWidth, ' '));
 
     for (final point in allDrawableCells) {
       _drawBox(canvas, point.x - minX, point.y - minY);
@@ -538,7 +543,8 @@ void main(List<String> args) async {
     // STEP 2: Generate intelligent clues
     print("[2] Generating ${config.numClues} 'Power Position' clues...");
     final clues = <String, int>{};
-    final domain = List<int>.generate(config.maxN - config.minN + 1, (i) => i + config.minN);
+    final domain = List<int>.generate(
+        config.maxN - config.minN + 1, (i) => i + config.minN);
 
     final variableCounts = <String, int>{};
     for (final varName in allVarNames) {
@@ -555,12 +561,15 @@ void main(List<String> args) async {
     final disqualifiedEquations = <Equation>{};
 
     for (int i = 0; i < config.numClues && candidates.isNotEmpty; i++) {
-      candidates.sort((a, b) => variableCounts[b]!.compareTo(variableCounts[a]!));
+      candidates
+          .sort((a, b) => variableCounts[b]!.compareTo(variableCounts[a]!));
       if (candidates.isEmpty) break;
       final bestCandidate = candidates.first;
 
       final chosenEquation = puzzle.equations.firstWhere(
-        (eq) => eq.variableNames.contains(bestCandidate) && !disqualifiedEquations.contains(eq),
+        (eq) =>
+            eq.variableNames.contains(bestCandidate) &&
+            !disqualifiedEquations.contains(eq),
         orElse: () => puzzle.equations.first,
       );
 
@@ -596,7 +605,8 @@ void main(List<String> args) async {
     // STEP 3: Formulate and solve the CSP with a timeout
     print("[3] Solving puzzle (timeout in ${config.timeoutSeconds}s)...");
     final p = Problem();
-    final fullDomain = List<int>.generate(config.maxN - config.minN + 1, (i) => i + config.minN);
+    final fullDomain = List<int>.generate(
+        config.maxN - config.minN + 1, (i) => i + config.minN);
     if (config.noDups) {
       fullDomain.removeWhere((val) => clues.values.contains(val));
     }
@@ -660,9 +670,7 @@ void main(List<String> args) async {
 
   print('\n' + ('=' * 60));
   // STEP 4: Display the final result
-  if (solution != null &&
-      solution != 'FAILURE' &&
-      successfulPuzzle != null) {
+  if (solution != null && solution != 'FAILURE' && successfulPuzzle != null) {
     print("--- FINAL SOLUTION ---");
     final solvedRenderer =
         AsciiRenderer(successfulPuzzle, config, solution: solution);

@@ -748,7 +748,8 @@ Future<void> runSchedulingDemo() async {
   p.addInSet(['Science'], {4, 5});
 
   // English and History should be consecutive (for language block)
-  p.addConstraint(['English', 'History'], (dynamic e, dynamic h) => (e - h).abs() == 1);
+  p.addConstraint(
+      ['English', 'History'], (dynamic e, dynamic h) => (e - h).abs() == 1);
 
   final solution = await p.getSolution();
   printResult(solution, successMessage: 'Class schedule found!');

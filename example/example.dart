@@ -240,7 +240,8 @@ Future<void> performanceExample() async {
   p1.addVariables(variables, domain);
   for (var i = 0; i < n; i++) {
     for (var j = i + 1; j < n; j++) {
-      p1.addConstraint([variables[i], variables[j]], (dynamic a, dynamic b) => a != b);
+      p1.addConstraint(
+          [variables[i], variables[j]], (dynamic a, dynamic b) => a != b);
     }
   }
   final solution1 = await p1.getSolution();

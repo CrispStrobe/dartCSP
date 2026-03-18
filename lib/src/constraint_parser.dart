@@ -5,7 +5,6 @@ import 'types.dart';
 
 /// Exception thrown when a constraint string cannot be parsed
 class ConstraintParseException implements Exception {
-
   ConstraintParseException(this.message, this.constraint);
   final String message;
   final String constraint;
@@ -16,7 +15,6 @@ class ConstraintParseException implements Exception {
 
 /// Represents a parsed constraint with its variables and predicate
 class ParsedConstraint {
-
   ParsedConstraint(this.predicate, this.variables, this.type);
   final dynamic
       predicate; // BinaryPredicate, NaryPredicate, or VariableConstraint
@@ -34,7 +32,6 @@ enum ConstraintType {
 
 /// Variable constraint where one variable equals a computed value from others
 abstract class VariableConstraint {
-
   VariableConstraint(this.targetVariable, this.sourceVariables);
   final String targetVariable;
   final List<String> sourceVariables;
@@ -44,26 +41,25 @@ abstract class VariableConstraint {
 
 /// Constraint where one variable equals the sum of others: C = A + B
 class VariableSumConstraint extends VariableConstraint {
-
   VariableSumConstraint(super.targetVariable, super.sourceVariables,
       {this.multipliers});
   final List<num>? multipliers;
 
   @override
   NaryPredicate toPredicate() => (Map<String, dynamic> assignment) {
-      final targetValue = assignment[targetVariable];
-      if (targetValue == null) return true;
+        final targetValue = assignment[targetVariable];
+        if (targetValue == null) return true;
 
-      num sum = 0;
-      for (var i = 0; i < sourceVariables.length; i++) {
-        final value = assignment[sourceVariables[i]];
-        if (value == null) return true;
-        final multiplier = multipliers?[i] ?? 1;
-        sum += (value as num) * multiplier;
-      }
+        num sum = 0;
+        for (var i = 0; i < sourceVariables.length; i++) {
+          final value = assignment[sourceVariables[i]];
+          if (value == null) return true;
+          final multiplier = multipliers?[i] ?? 1;
+          sum += (value as num) * multiplier;
+        }
 
-      return sum == (targetValue as num);
-    };
+        return sum == (targetValue as num);
+      };
 }
 
 /// Constraint where one variable equals the product of others: C = A * B
@@ -72,18 +68,18 @@ class VariableProductConstraint extends VariableConstraint {
 
   @override
   NaryPredicate toPredicate() => (Map<String, dynamic> assignment) {
-      final targetValue = assignment[targetVariable];
-      if (targetValue == null) return true;
+        final targetValue = assignment[targetVariable];
+        if (targetValue == null) return true;
 
-      num product = 1;
-      for (final varName in sourceVariables) {
-        final value = assignment[varName];
-        if (value == null) return true;
-        product *= value as num;
-      }
+        num product = 1;
+        for (final varName in sourceVariables) {
+          final value = assignment[varName];
+          if (value == null) return true;
+          product *= value as num;
+        }
 
-      return product == (targetValue as num);
-    };
+        return product == (targetValue as num);
+      };
 }
 
 /// Advanced expression evaluator for mathematical expressions
@@ -492,7 +488,8 @@ class ConstraintParser {
     return null;
   }
 
-  static bool _isChainedInequality(String constraint) => constraint.split('!=').length > 2;
+  static bool _isChainedInequality(String constraint) =>
+      constraint.split('!=').length > 2;
 
   static ParsedConstraint? _parseVariableConstantConstraint(
       String constraint, List<String> variables) {

@@ -26,7 +26,6 @@ import 'package:dart_csp/dart_csp.dart';
 
 /// A data class to hold the configuration settings for puzzle generation.
 class PuzzleConfig {
-
   PuzzleConfig({
     this.gridN = 3,
     this.minN = 1,
@@ -36,6 +35,7 @@ class PuzzleConfig {
     this.numClues = 0,
     this.verbose = false,
   });
+
   /// The size of the N x N grid.
   int gridN;
 
@@ -133,7 +133,6 @@ void main(List<String> args) async {
 
 /// The main class responsible for the puzzle generation and solving process.
 class PuzzleGenerator {
-
   PuzzleGenerator(this.config);
   final PuzzleConfig config;
   final Random _random = Random();
@@ -202,13 +201,14 @@ class PuzzleGenerator {
       }
     }
 
-    NaryPredicate createPredicate(List<String> varNames, List<String> opList) => (assign) {
-        final values = varNames.map((v) => assign[v]).toList();
-        final operands = values.sublist(0, config.gridN - 1);
-        final result = values.last;
-        if (operands.any((op) => op == null) || result == null) return false;
-        return evaluate(operands, opList) == result;
-      };
+    NaryPredicate createPredicate(List<String> varNames, List<String> opList) =>
+        (assign) {
+          final values = varNames.map((v) => assign[v]).toList();
+          final operands = values.sublist(0, config.gridN - 1);
+          final result = values.last;
+          if (operands.any((op) => op == null) || result == null) return false;
+          return evaluate(operands, opList) == result;
+        };
 
     for (var r = 0; r < config.gridN; r++) {
       final rowVars = List<String>.generate(config.gridN, (c) => id(r, c));
@@ -243,13 +243,14 @@ class PuzzleGenerator {
       }
     }
 
-    NaryPredicate createPredicate(List<String> varNames, List<String> opList) => (assign) {
-        final values = varNames.map((v) => assign[v]).toList();
-        final operands = values.sublist(0, config.gridN - 1);
-        final result = values.last;
-        if (operands.any((op) => op == null) || result == null) return false;
-        return evaluate(operands, opList) == result;
-      };
+    NaryPredicate createPredicate(List<String> varNames, List<String> opList) =>
+        (assign) {
+          final values = varNames.map((v) => assign[v]).toList();
+          final operands = values.sublist(0, config.gridN - 1);
+          final result = values.last;
+          if (operands.any((op) => op == null) || result == null) return false;
+          return evaluate(operands, opList) == result;
+        };
 
     for (var r = 0; r < config.gridN; r++) {
       final rowVars = List<String>.generate(config.gridN, (c) => id(r, c));

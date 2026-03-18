@@ -246,7 +246,10 @@ void main() {
       for (var i = 0; i < 4; i++) {
         for (var j = i + 1; j < 4; j++) {
           final colDiff = j - i;
-          p.addConstraint([queens[i], queens[j]], (dynamic posI, dynamic posJ) => ((posI as int) - (posJ as int)).abs() != colDiff);
+          p.addConstraint(
+              [queens[i], queens[j]],
+              (dynamic posI, dynamic posJ) =>
+                  ((posI as int) - (posJ as int)).abs() != colDiff);
         }
       }
 
@@ -564,7 +567,10 @@ void main() {
       for (var i = 0; i < n; i++) {
         for (var j = i + 1; j < n; j++) {
           final colDiff = j - i;
-          p.addConstraint([queens[i], queens[j]], (dynamic posI, dynamic posJ) => ((posI as int) - (posJ as int)).abs() != colDiff);
+          p.addConstraint(
+              [queens[i], queens[j]],
+              (dynamic posI, dynamic posJ) =>
+                  ((posI as int) - (posJ as int)).abs() != colDiff);
         }
       }
 

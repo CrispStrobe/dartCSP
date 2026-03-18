@@ -562,8 +562,7 @@ class CSP {
   /// combination of values for the other variables in the constraint `C` that
   /// satisfies `C.predicate`. This is itself a mini-CSP, solved here with a
   /// simple recursive DFS.
-  static bool _hasSupport(
-      String focusVar, dynamic focusVal, NaryConstraint c,
+  static bool _hasSupport(String focusVar, dynamic focusVal, NaryConstraint c,
       Map<String, List<dynamic>> variables) {
     // Gather the other variables involved in the constraint.
     final others = c.vars.where((v) => v != focusVar).toList();
@@ -675,7 +674,8 @@ class CSP {
   static Map<String, List<dynamic>> _cloneVars(
       Map<String, List<dynamic>> variables) {
     final out = <String, List<dynamic>>{};
-    variables.forEach((String k, List<dynamic> v) => out[k] = List<dynamic>.from(v));
+    variables
+        .forEach((String k, List<dynamic> v) => out[k] = List<dynamic>.from(v));
     return out;
   }
 

@@ -104,7 +104,6 @@ import 'package:dart_csp/dart_csp.dart';
 // --------------------------------------------------------------------------
 
 class PuzzleConfig {
-
   PuzzleConfig({
     this.minN = 1,
     this.maxN = 9,
@@ -197,9 +196,9 @@ PuzzleConfig parseArgs(List<String> args) {
 // --------------------------------------------------------------------------
 
 class GridPatternGenerator {
-
   GridPatternGenerator({
-    required this.targetEdges, this.width = 30,
+    required this.targetEdges,
+    this.width = 30,
     this.height = 25,
   }) {
     initializeGrid();
@@ -228,7 +227,8 @@ class GridPatternGenerator {
     grid = List.generate(height, (_) => List.generate(width, (_) => ' '));
   }
 
-  bool isValidPosition(int x, int y) => x >= 2 && x < width - 2 && y >= 2 && y < height - 2;
+  bool isValidPosition(int x, int y) =>
+      x >= 2 && x < width - 2 && y >= 2 && y < height - 2;
 
   int countSquaresBehind(Point<int> pos, int direction) {
     final oppositeDir = directions[(direction + 2) % 4];
@@ -280,8 +280,8 @@ class GridPatternGenerator {
 
         if (decision < 40) {
           final dir = directions[currentDirection];
-          final backPos =
-              Point<int>(currentPos.x - (dir.x * 2), currentPos.y - (dir.y * 2));
+          final backPos = Point<int>(
+              currentPos.x - (dir.x * 2), currentPos.y - (dir.y * 2));
           var foundTurn = false;
           for (final newDir in turnOptions) {
             if (canWalk4Steps(backPos, newDir)) {
@@ -363,7 +363,6 @@ class Equation {
 }
 
 class PuzzleParser {
-
   PuzzleParser(this.grid, this.config) {
     _findEquations();
   }
@@ -425,7 +424,6 @@ class PuzzleParser {
 // --------------------------------------------------------------------------
 
 class AsciiRenderer {
-
   AsciiRenderer(this.puzzle, this.config, {this.solution}) {
     cellWidth = config.maxN.toString().length + 2;
   }

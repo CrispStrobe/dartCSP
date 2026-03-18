@@ -95,7 +95,8 @@ void main() {
       p.addStringConstraint('A + B == -15');
       final solution = await p.getSolution();
       expect(solution, isA<Map<String, dynamic>>());
-      expect((solution as Map<String, dynamic>)['A'] + solution['B'], equals(-15));
+      expect(
+          (solution as Map<String, dynamic>)['A'] + solution['B'], equals(-15));
     });
 
     test('parses expressions with extra whitespace', () async {

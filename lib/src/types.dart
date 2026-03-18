@@ -26,8 +26,8 @@ typedef CspCallback = void Function(
 /// For a constraint like `A > B`, you might have one `BinaryConstraint` for the
 /// arc A -> B and another for B -> A to enforce full consistency.
 class BinaryConstraint {
-
   BinaryConstraint(this.head, this.tail, this.predicate);
+
   /// The "source" variable in the directed constraint arc.
   final String head;
 
@@ -44,8 +44,8 @@ class BinaryConstraint {
 /// This is used for complex constraints that cannot be broken down into simple
 /// binary relationships, such as `A + B = C`.
 class NaryConstraint {
-
   NaryConstraint({required this.vars, required this.predicate});
+
   /// The list of variable names involved in this constraint.
   final List<String> vars;
 
@@ -59,7 +59,6 @@ class NaryConstraint {
 /// This class encapsulates all the necessary components of a CSP: the variables,
 /// their domains, and the constraints that bind them.
 class CspProblem {
-
   CspProblem({
     required this.variables,
     this.constraints = const <BinaryConstraint>[],
@@ -67,6 +66,7 @@ class CspProblem {
     this.timeStep = 1,
     this.cb,
   });
+
   /// A map where keys are variable names and values are lists (domains) of
   /// their possible values.
   Map<String, List<dynamic>> variables;

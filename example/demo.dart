@@ -22,13 +22,13 @@ Future<void> main() async {
   await runResourceAllocationDemo();
   await runSchedulingDemo();
 
-  print('\n' + '=' * 70);
+  print('\n${'=' * 70}');
   print('🎉 All demos completed successfully!');
 }
 
 /// Prints a formatted header to the console.
 void printHeader(String title) {
-  print('\n' + '─' * 50);
+  print('\n${'─' * 50}');
   print('─ $title');
   print('─' * 50);
 }
@@ -36,7 +36,7 @@ void printHeader(String title) {
 /// Prints a sub-section header
 void printSubHeader(String title) {
   print('\n   ► $title');
-  print('   ' + '─' * (title.length + 2));
+  print('   ${'─' * (title.length + 2)}');
 }
 
 // ====================================================================
@@ -145,17 +145,17 @@ Future<void> solveNQueensOldWay(int size) async {
 
   // Model: One variable per queen (and per row).
   // Domain of each variable is the list of possible [row, col] coordinates.
-  for (int i = 0; i < size; i++) {
+  for (var i = 0; i < size; i++) {
     final domain = <List<int>>[];
-    for (int j = 0; j < size; j++) {
+    for (var j = 0; j < size; j++) {
       domain.add([i, j]);
     }
     variables[i.toString()] = domain;
   }
 
   // Add constraints between every pair of queens.
-  for (int i = 0; i < size; i++) {
-    for (int j = 0; j < size; j++) {
+  for (var i = 0; i < size; i++) {
+    for (var j = 0; j < size; j++) {
       if (i != j) {
         constraints
             .add(BinaryConstraint(i.toString(), j.toString(), notColliding));
@@ -167,24 +167,24 @@ Future<void> solveNQueensOldWay(int size) async {
   final solution = await CSP.solve(problem);
 
   printResult(solution, successMessage: 'Solution found with manual approach!');
-  if (solution is Map) printQueensBoard(size, solution);
+  if (solution is Map<String, dynamic>) printQueensBoard(size, solution);
 }
 
 Future<void> solveNQueensWithBuiltins(int size) async {
   final p = Problem();
 
   // Add variables and their domains
-  for (int i = 0; i < size; i++) {
+  for (var i = 0; i < size; i++) {
     final domain = <List<int>>[];
-    for (int j = 0; j < size; j++) {
+    for (var j = 0; j < size; j++) {
       domain.add([i, j]);
     }
     p.addVariable(i.toString(), domain);
   }
 
   // Add constraints between every pair of queens using factory functions
-  for (int i = 0; i < size; i++) {
-    for (int j = i + 1; j < size; j++) {
+  for (var i = 0; i < size; i++) {
+    for (var j = i + 1; j < size; j++) {
       // Using lambda (old way) - just for comparison
       p.addConstraint([i.toString(), j.toString()], notColliding);
     }
@@ -193,7 +193,7 @@ Future<void> solveNQueensWithBuiltins(int size) async {
   final solution = await p.getSolution();
 
   printResult(solution, successMessage: 'Solution found with Problem builder!');
-  if (solution is Map) printQueensBoard(size, solution);
+  if (solution is Map<String, dynamic>) printQueensBoard(size, solution);
 }
 
 // ====================================================================
@@ -223,8 +223,8 @@ Future<void> solveSudokuWithBuiltins(List<List<int>> puzzle) async {
   final domain = List.generate(9, (i) => i + 1);
 
   // Add all 81 variables
-  for (int r = 0; r < 9; r++) {
-    for (int c = 0; c < 9; c++) {
+  for (var r = 0; r < 9; r++) {
+    for (var c = 0; c < 9; c++) {
       final key = '$r-$c';
       if (puzzle[r][c] != 0) {
         p.addVariable(key, [puzzle[r][c]]);
@@ -238,29 +238,29 @@ Future<void> solveSudokuWithBuiltins(List<List<int>> puzzle) async {
   // This is much cleaner than individual binary constraints
 
   // Rows
-  for (int r = 0; r < 9; r++) {
+  for (var r = 0; r < 9; r++) {
     final row = <String>[];
-    for (int c = 0; c < 9; c++) {
+    for (var c = 0; c < 9; c++) {
       row.add('$r-$c');
     }
     p.addAllDifferent(row); // Using the new extension method!
   }
 
   // Columns
-  for (int c = 0; c < 9; c++) {
+  for (var c = 0; c < 9; c++) {
     final col = <String>[];
-    for (int r = 0; r < 9; r++) {
+    for (var r = 0; r < 9; r++) {
       col.add('$r-$c');
     }
     p.addAllDifferent(col); // Using the new extension method!
   }
 
   // 3x3 Blocks
-  for (int br in [0, 3, 6]) {
-    for (int bc in [0, 3, 6]) {
+  for (final br in [0, 3, 6]) {
+    for (final bc in [0, 3, 6]) {
       final block = <String>[];
-      for (int r = br; r < br + 3; r++) {
-        for (int c = bc; c < bc + 3; c++) {
+      for (var r = br; r < br + 3; r++) {
+        for (var c = bc; c < bc + 3; c++) {
           block.add('$r-$c');
         }
       }
@@ -271,7 +271,7 @@ Future<void> solveSudokuWithBuiltins(List<List<int>> puzzle) async {
   final solution = await p.getSolution();
   printResult(solution,
       successMessage: 'Sudoku solved with built-in AllDifferent!');
-  if (solution is Map) printSudokuBoard(solution);
+  if (solution is Map<String, dynamic>) printSudokuBoard(solution);
 }
 
 // ====================================================================
@@ -356,7 +356,7 @@ Future<void> testExactSum() async {
 
   final solution = await p.getSolution();
   printResult(solution, successMessage: 'Found numbers that sum to 10!');
-  if (solution is Map) {
+  if (solution is Map<String, dynamic>) {
     final sum = solution['A'] + solution['B'] + solution['C'];
     print(
         '   Verification: ${solution['A']} + ${solution['B']} + ${solution['C']} = $sum');
@@ -375,7 +375,7 @@ Future<void> testMinMaxSum() async {
 
   final solution = await p.getSolution();
   printResult(solution, successMessage: 'Found numbers in range!');
-  if (solution is Map) {
+  if (solution is Map<String, dynamic>) {
     final sum = solution['X'] + solution['Y'] + solution['Z'];
     print(
         '   Verification: ${solution['X']} + ${solution['Y']} + ${solution['Z']} = $sum');
@@ -392,7 +392,7 @@ Future<void> testSumRange() async {
 
   final solution = await p.getSolution();
   printResult(solution, successMessage: 'Sum is in range [4, 8]!');
-  if (solution is Map) {
+  if (solution is Map<String, dynamic>) {
     final sum = solution['A'] + solution['B'];
     print('   Verification: ${solution['A']} + ${solution['B']} = $sum');
   }
@@ -409,8 +409,8 @@ Future<void> testWeightedSum() async {
 
   final solution = await p.getSolution();
   printResult(solution, successMessage: 'Found weighted sum solution!');
-  if (solution is Map) {
-    final weightedSum = 2 * solution['A'] + 3 * solution['B'];
+  if (solution is Map<String, dynamic>) {
+    final weightedSum = 2 * (solution['A'] as num) + 3 * (solution['B'] as num);
     print(
         '   Verification: 2*${solution['A']} + 3*${solution['B']} = $weightedSum');
   }
@@ -441,7 +441,7 @@ Future<void> testExactProduct() async {
 
   final solution = await p.getSolution();
   printResult(solution, successMessage: 'Found numbers that multiply to 12!');
-  if (solution is Map) {
+  if (solution is Map<String, dynamic>) {
     final product = solution['A'] * solution['B'];
     print('   Verification: ${solution['A']} * ${solution['B']} = $product');
   }
@@ -459,7 +459,7 @@ Future<void> testMinMaxProduct() async {
 
   final solution = await p.getSolution();
   printResult(solution, successMessage: 'Found product in range!');
-  if (solution is Map) {
+  if (solution is Map<String, dynamic>) {
     final product = solution['X'] * solution['Y'] * solution['Z'];
     print(
         '   Verification: ${solution['X']} * ${solution['Y']} * ${solution['Z']} = $product');
@@ -523,8 +523,8 @@ Future<void> testSomeInSet() async {
 
   final solution = await p.getSolution();
   printResult(solution, successMessage: 'At least 2 are from special set!');
-  if (solution is Map) {
-    final inSpecial = solution.values.where((v) => special.contains(v)).length;
+  if (solution is Map<String, dynamic>) {
+    final inSpecial = solution.values.where(special.contains).length;
     print('   Verification: $inSpecial variables are in special set');
   }
 }
@@ -557,7 +557,7 @@ Future<void> testAscending() async {
 
   final solution = await p.getSolution();
   printResult(solution, successMessage: 'Variables are in ascending order!');
-  if (solution is Map) {
+  if (solution is Map<String, dynamic>) {
     print(
         '   Verification: ${solution['A']} <= ${solution['B']} <= ${solution['C']}');
   }
@@ -575,7 +575,7 @@ Future<void> testStrictlyAscending() async {
   final solution = await p.getSolution();
   printResult(solution,
       successMessage: 'Variables are in strictly ascending order!');
-  if (solution is Map) {
+  if (solution is Map<String, dynamic>) {
     print(
         '   Verification: ${solution['X']} < ${solution['Y']} < ${solution['Z']}');
   }
@@ -592,7 +592,7 @@ Future<void> testDescending() async {
 
   final solution = await p.getSolution();
   printResult(solution, successMessage: 'Variables are in descending order!');
-  if (solution is Map) {
+  if (solution is Map<String, dynamic>) {
     print('   Verification: ${solution['P']} >= ${solution['Q']}');
   }
 }
@@ -654,9 +654,9 @@ Future<void> runMagicSquareDemo() async {
   printResult(solution,
       successMessage: '3x3 Magic Square solved with one random clue!');
 
-  if (solution is Map) {
+  if (solution is Map<String, dynamic>) {
     print('\n   Magic Square:');
-    for (int r = 0; r < 3; r++) {
+    for (var r = 0; r < 3; r++) {
       final row = [solution['${r}0'], solution['${r}1'], solution['${r}2']];
       print('   ${row.join('  ')}');
     }
@@ -664,12 +664,12 @@ Future<void> runMagicSquareDemo() async {
     // Verify sums
     print('\n   Verification:');
     // Rows
-    for (int r = 0; r < 3; r++) {
+    for (var r = 0; r < 3; r++) {
       final sum = solution['${r}0'] + solution['${r}1'] + solution['${r}2'];
       print('   Row $r: $sum');
     }
     // Columns
-    for (int c = 0; c < 3; c++) {
+    for (var c = 0; c < 3; c++) {
       final sum = solution['0$c'] + solution['1$c'] + solution['2$c'];
       print('   Col $c: $sum');
     }
@@ -706,18 +706,18 @@ Future<void> runResourceAllocationDemo() async {
 
   // TeamA gets at least as much as TeamB (priority constraint)
   // Create a proper BinaryPredicate function
-  bool teamAPriority(dynamic a, dynamic b) => a >= b;
+  bool teamAPriority(dynamic a, dynamic b) => (a as num) >= (b as num);
   p.addConstraint(['TeamA', 'TeamB'], teamAPriority);
 
   final solution = await p.getSolution();
   printResult(solution, successMessage: 'Resource allocation found!');
 
-  if (solution is Map) {
+  if (solution is Map<String, dynamic>) {
     print('   Team A: ${solution['TeamA']} resources');
     print('   Team B: ${solution['TeamB']} resources');
     print('   Team C: ${solution['TeamC']} resources');
     print(
-        '   Total: ${solution['TeamA'] + solution['TeamB'] + solution['TeamC']} resources');
+        '   Total: ${(solution['TeamA'] as num) + (solution['TeamB'] as num) + (solution['TeamC'] as num)} resources');
   }
 }
 
@@ -748,12 +748,12 @@ Future<void> runSchedulingDemo() async {
   p.addInSet(['Science'], {4, 5});
 
   // English and History should be consecutive (for language block)
-  p.addConstraint(['English', 'History'], (e, h) => (e - h).abs() == 1);
+  p.addConstraint(['English', 'History'], (dynamic e, dynamic h) => (e - h).abs() == 1);
 
   final solution = await p.getSolution();
   printResult(solution, successMessage: 'Class schedule found!');
 
-  if (solution is Map) {
+  if (solution is Map<String, dynamic>) {
     final timeMap = {1: '9AM', 2: '10AM', 3: '11AM', 4: '1PM', 5: '2PM'};
     print('   Schedule:');
     solution.forEach((subject, time) {
@@ -770,10 +770,10 @@ Future<void> runSchedulingDemo() async {
 List<List<String>> getSudokuUnits() {
   final units = <List<String>>[];
   // Rows and Columns
-  for (int i = 0; i < 9; i++) {
+  for (var i = 0; i < 9; i++) {
     final row = <String>[];
     final col = <String>[];
-    for (int j = 0; j < 9; j++) {
+    for (var j = 0; j < 9; j++) {
       row.add('$i-$j');
       col.add('$j-$i');
     }
@@ -781,11 +781,11 @@ List<List<String>> getSudokuUnits() {
     units.add(col);
   }
   // 3x3 Blocks
-  for (int br in [0, 3, 6]) {
-    for (int bc in [0, 3, 6]) {
+  for (final br in [0, 3, 6]) {
+    for (final bc in [0, 3, 6]) {
       final block = <String>[];
-      for (int r = br; r < br + 3; r++) {
-        for (int c = bc; c < bc + 3; c++) {
+      for (var r = br; r < br + 3; r++) {
+        for (var c = bc; c < bc + 3; c++) {
           block.add('$r-$c');
         }
       }
@@ -802,7 +802,7 @@ void printResult(dynamic solution, {String successMessage = ''}) {
   } else {
     print('   >>> Status: SUCCESS ✅');
     if (successMessage.isNotEmpty) print('   $successMessage');
-    if (solution is Map && solution.length <= 6) {
+    if (solution is Map<String, dynamic> && solution.length <= 6) {
       // Print small solutions directly
       print('   Solution: $solution');
     }
@@ -810,7 +810,7 @@ void printResult(dynamic solution, {String successMessage = ''}) {
 }
 
 /// Prints a solved N-Queens board.
-void printQueensBoard(int size, Map solution) {
+void printQueensBoard(int size, Map<dynamic, dynamic> solution) {
   print('\n   Queens Board:');
   final board = List.generate(size, (_) => List.filled(size, '.'));
   for (final pos in solution.values) {
@@ -824,13 +824,13 @@ void printQueensBoard(int size, Map solution) {
 }
 
 /// Prints a solved Sudoku board.
-void printSudokuBoard(Map solution) {
+void printSudokuBoard(Map<dynamic, dynamic> solution) {
   const divider = '   |-------+-------+-------|';
   print('\n   Solved Sudoku:');
   print(divider);
-  for (int r = 0; r < 9; r++) {
-    String rowStr = '   | ';
-    for (int c = 0; c < 9; c++) {
+  for (var r = 0; r < 9; r++) {
+    var rowStr = '   | ';
+    for (var c = 0; c < 9; c++) {
       rowStr += solution['$r-$c'].toString();
       rowStr += (c + 1) % 3 == 0 ? ' | ' : ' ';
     }

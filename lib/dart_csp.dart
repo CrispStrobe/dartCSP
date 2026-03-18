@@ -10,20 +10,16 @@ library dart_csp;
 import 'src/problem.dart';
 import 'src/types.dart';
 
-// Core types and definitions
-export 'src/types.dart';
-
-// Main problem builder
-export 'src/problem.dart';
-
-// CSP solver
-export 'src/solver.dart';
-
 // Built-in constraint factories
 export 'src/builtin_constraints.dart';
-
 // String constraint parsing
 export 'src/constraint_parser.dart';
+// Main problem builder
+export 'src/problem.dart';
+// CSP solver
+export 'src/solver.dart';
+// Core types and definitions
+export 'src/types.dart';
 
 /// Convenience function to create a new Problem instance
 Problem createProblem() => Problem();
@@ -58,7 +54,7 @@ Future<dynamic> solveProblem({
     problem.setOptions(timeStep: timeStep, callback: callback);
   }
 
-  return await problem.getSolution();
+  return problem.getSolution();
 }
 
 /// Convenience function to find all solutions to a problem with string constraints
@@ -108,7 +104,7 @@ Future<dynamic> solveAllDifferent({
   final problem = Problem();
   problem.addVariables(variables, domain);
   problem.addAllDifferent(variables);
-  return await problem.getSolution();
+  return problem.getSolution();
 }
 
 /// Quick helper for finding all solutions to all-different problems
@@ -152,7 +148,7 @@ Future<dynamic> solveSumProblem({
   final problem = Problem();
   problem.addVariables(variables, domain);
   problem.addExactSum(variables, targetSum, multipliers: multipliers);
-  return await problem.getSolution();
+  return problem.getSolution();
 }
 
 /// Quick helper for finding all solutions to sum constraint problems
@@ -196,7 +192,7 @@ Future<int> countAllSolutions({
   required Map<String, List<dynamic>> variables,
   required List<String> constraints,
 }) async {
-  int count = 0;
+  var count = 0;
   await for (final _ in solveAllProblems(
     variables: variables,
     constraints: constraints,
@@ -221,7 +217,7 @@ Future<bool> hasMultipleSolutions({
   required Map<String, List<dynamic>> variables,
   required List<String> constraints,
 }) async {
-  int count = 0;
+  var count = 0;
   await for (final _ in solveAllProblems(
     variables: variables,
     constraints: constraints,
@@ -248,7 +244,7 @@ Future<List<Map<String, dynamic>>> getFirstNSolutions({
   required List<String> constraints,
 }) async {
   final solutions = <Map<String, dynamic>>[];
-  int count = 0;
+  var count = 0;
   await for (final solution in solveAllProblems(
     variables: variables,
     constraints: constraints,

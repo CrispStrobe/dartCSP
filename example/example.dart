@@ -1,4 +1,5 @@
 /// Complete usage examples for the dart_csp library
+library;
 
 import 'package:dart_csp/dart_csp.dart';
 
@@ -25,15 +26,15 @@ Future<void> basicLambdaExample() async {
   p.addVariables(['WA', 'NT', 'SA', 'Q', 'NSW', 'V', 'T'], colors);
 
   // Add constraints using lambda functions
-  p.addConstraint(['SA', 'WA'], (sa, wa) => sa != wa);
-  p.addConstraint(['SA', 'NT'], (sa, nt) => sa != nt);
-  p.addConstraint(['SA', 'Q'], (sa, q) => sa != q);
-  p.addConstraint(['SA', 'NSW'], (sa, nsw) => sa != nsw);
-  p.addConstraint(['SA', 'V'], (sa, v) => sa != v);
-  p.addConstraint(['WA', 'NT'], (wa, nt) => wa != nt);
-  p.addConstraint(['NT', 'Q'], (nt, q) => nt != q);
-  p.addConstraint(['Q', 'NSW'], (q, nsw) => q != nsw);
-  p.addConstraint(['NSW', 'V'], (nsw, v) => nsw != v);
+  p.addConstraint(['SA', 'WA'], (dynamic sa, dynamic wa) => sa != wa);
+  p.addConstraint(['SA', 'NT'], (dynamic sa, dynamic nt) => sa != nt);
+  p.addConstraint(['SA', 'Q'], (dynamic sa, dynamic q) => sa != q);
+  p.addConstraint(['SA', 'NSW'], (dynamic sa, dynamic nsw) => sa != nsw);
+  p.addConstraint(['SA', 'V'], (dynamic sa, dynamic v) => sa != v);
+  p.addConstraint(['WA', 'NT'], (dynamic wa, dynamic nt) => wa != nt);
+  p.addConstraint(['NT', 'Q'], (dynamic nt, dynamic q) => nt != q);
+  p.addConstraint(['Q', 'NSW'], (dynamic q, dynamic nsw) => q != nsw);
+  p.addConstraint(['NSW', 'V'], (dynamic nsw, dynamic v) => nsw != v);
 
   final solution = await p.getSolution();
   print('Solution: $solution\n');
@@ -61,7 +62,7 @@ Future<void> stringConstraintsExample() async {
   p.addVariables(['X', 'Y', 'Z'], [1, 2, 3, 4, 5]);
 
   // String constraints are parsed automatically
-  p.addStringConstraints(["X != Y", "Y != Z", "X + Y + Z <= 10", "X * Y >= 6"]);
+  p.addStringConstraints(['X != Y', 'Y != Z', 'X + Y + Z <= 10', 'X * Y >= 6']);
 
   final solution = await p.getSolution();
   print('Solution: $solution\n');
@@ -76,10 +77,10 @@ Future<void> variableConstraintsExample() async {
 
   // C = A + B and D = A * B
   p.addStringConstraints([
-    "A + B == C",
-    "A * B == D",
-    "A < B", // Order constraint
-    "C < D" // Result constraint
+    'A + B == C',
+    'A * B == D',
+    'A < B', // Order constraint
+    'C < D' // Result constraint
   ]);
 
   final solution = await p.getSolution();
@@ -100,16 +101,16 @@ Future<void> magicSquareExample() async {
   // All rows, columns, and diagonals sum to 15
   p.addStringConstraints([
     // Rows
-    "A1 + A2 + A3 == 15",
-    "B1 + B2 + B3 == 15",
-    "C1 + C2 + C3 == 15",
+    'A1 + A2 + A3 == 15',
+    'B1 + B2 + B3 == 15',
+    'C1 + C2 + C3 == 15',
     // Columns
-    "A1 + B1 + C1 == 15",
-    "A2 + B2 + C2 == 15",
-    "A3 + B3 + C3 == 15",
+    'A1 + B1 + C1 == 15',
+    'A2 + B2 + C2 == 15',
+    'A3 + B3 + C3 == 15',
     // Diagonals
-    "A1 + B2 + C3 == 15",
-    "A3 + B2 + C1 == 15"
+    'A1 + B2 + C3 == 15',
+    'A3 + B2 + C1 == 15'
   ]);
 
   final solution = await p.getSolution();
@@ -136,8 +137,8 @@ Future<void> nQueensExample() async {
   p.addAllDifferent(queens);
 
   // No two queens on same diagonal
-  for (int i = 0; i < queens.length; i++) {
-    for (int j = i + 1; j < queens.length; j++) {
+  for (var i = 0; i < queens.length; i++) {
+    for (var j = i + 1; j < queens.length; j++) {
       final qi = queens[i];
       final qj = queens[j];
 
@@ -146,7 +147,7 @@ Future<void> nQueensExample() async {
       // |position_i - position_j| != |i - j|
       final colDiff = (j - i).abs();
 
-      p.addConstraint([qi, qj], (posI, posJ) {
+      p.addConstraint([qi, qj], (dynamic posI, dynamic posJ) {
         final rowDiff = (posI - posJ).abs();
         return rowDiff != colDiff;
       });
@@ -156,9 +157,9 @@ Future<void> nQueensExample() async {
   final solution = await p.getSolution();
   if (solution is Map) {
     print('4-Queens solution:');
-    for (int row = 1; row <= 4; row++) {
-      String line = '';
-      for (int col = 1; col <= 4; col++) {
+    for (var row = 1; row <= 4; row++) {
+      var line = '';
+      for (var col = 1; col <= 4; col++) {
         final queenCol = solution['Q$row'];
         line += queenCol == col ? 'Q ' : '. ';
       }
@@ -237,9 +238,9 @@ Future<void> performanceExample() async {
   final stopwatch1 = Stopwatch()..start();
   final p1 = Problem();
   p1.addVariables(variables, domain);
-  for (int i = 0; i < n; i++) {
-    for (int j = i + 1; j < n; j++) {
-      p1.addConstraint([variables[i], variables[j]], (a, b) => a != b);
+  for (var i = 0; i < n; i++) {
+    for (var j = i + 1; j < n; j++) {
+      p1.addConstraint([variables[i], variables[j]], (dynamic a, dynamic b) => a != b);
     }
   }
   final solution1 = await p1.getSolution();
@@ -258,8 +259,8 @@ Future<void> performanceExample() async {
   final p3 = Problem();
   p3.addVariables(variables, domain);
   final constraints = <String>[];
-  for (int i = 0; i < n; i++) {
-    for (int j = i + 1; j < n; j++) {
+  for (var i = 0; i < n; i++) {
+    for (var j = i + 1; j < n; j++) {
       constraints.add('${variables[i]} != ${variables[j]}');
     }
   }
@@ -267,7 +268,7 @@ Future<void> performanceExample() async {
   final solution3 = await p3.getSolution();
   stopwatch3.stop();
 
-  print('Results for ${n}-variable all-different problem:');
+  print('Results for $n-variable all-different problem:');
   print('Lambda constraints:   ${stopwatch1.elapsedMilliseconds}ms');
   print('Built-in constraints: ${stopwatch2.elapsedMilliseconds}ms');
   print('String constraints:   ${stopwatch3.elapsedMilliseconds}ms');

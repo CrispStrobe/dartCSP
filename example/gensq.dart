@@ -17,8 +17,8 @@
 ///   --ops=<op1,op2>   Specifies allowed operators (+,-,*,/) (default: all).
 ///   --clues=<N>       Sets the number of initial clues (default: auto).
 ///   verbose           Enables detailed logging of the generation process.
+library;
 
-import 'dart:io';
 import 'dart:math';
 import 'package:dart_csp/dart_csp.dart';
 
@@ -26,6 +26,16 @@ import 'package:dart_csp/dart_csp.dart';
 
 /// A data class to hold the configuration settings for puzzle generation.
 class PuzzleConfig {
+
+  PuzzleConfig({
+    this.gridN = 3,
+    this.minN = 1,
+    this.maxN = 20,
+    this.ops = const ['+', '−', '×', '÷'],
+    this.maxAttempts = 250,
+    this.numClues = 0,
+    this.verbose = false,
+  });
   /// The size of the N x N grid.
   int gridN;
 
@@ -46,22 +56,12 @@ class PuzzleConfig {
 
   /// A flag to enable or disable verbose logging.
   bool verbose;
-
-  PuzzleConfig({
-    this.gridN = 3,
-    this.minN = 1,
-    this.maxN = 20,
-    this.ops = const ['+', '−', '×', '÷'],
-    this.maxAttempts = 250,
-    this.numClues = 0,
-    this.verbose = false,
-  });
 }
 
 /// Parses command-line arguments to create a [PuzzleConfig] object.
 PuzzleConfig parseArgs(List<String> args) {
   final config = PuzzleConfig();
-  bool cluesManuallySet = false;
+  var cluesManuallySet = false;
 
   for (final arg in args) {
     if (arg == 'verbose') {
@@ -133,10 +133,10 @@ void main(List<String> args) async {
 
 /// The main class responsible for the puzzle generation and solving process.
 class PuzzleGenerator {
-  final PuzzleConfig config;
-  final Random _random = Random();
 
   PuzzleGenerator(this.config);
+  final PuzzleConfig config;
+  final Random _random = Random();
 
   void log(String message) {
     if (config.verbose) {
@@ -148,7 +148,7 @@ class PuzzleGenerator {
 
   int randInt(int a, int b) => a + _random.nextInt(b - a + 1);
   T randChoice<T>(List<T> arr) => arr[_random.nextInt(arr.length)];
-  String id(int r, int c) => 'r${r}c${c}';
+  String id(int r, int c) => 'r${r}c$c';
   String opId(int? r, int? c, String type, [int index = 0]) {
     if (type == 'row') return 'op_r${r}_i$index';
     if (type == 'col') return 'op_c${c}_i$index';
@@ -159,8 +159,8 @@ class PuzzleGenerator {
     if (operands.any((op) => op == null) || operands.length != ops.length + 1) {
       return null;
     }
-    int currentVal = operands[0] as int;
-    for (int i = 0; i < ops.length; i++) {
+    var currentVal = operands[0] as int;
+    for (var i = 0; i < ops.length; i++) {
       final op = ops[i];
       final nextVal = operands[i + 1] as int;
       switch (op) {
@@ -194,31 +194,29 @@ class PuzzleGenerator {
     final fullDomain = List<int>.generate(
         config.maxN - config.minN + 1, (i) => i + config.minN);
 
-    for (int r = 0; r < config.gridN; r++) {
-      for (int c = 0; c < config.gridN; c++) {
+    for (var r = 0; r < config.gridN; r++) {
+      for (var c = 0; c < config.gridN; c++) {
         final cellId = id(r, c);
         variables[cellId] =
-            clues.containsKey(cellId) ? [clues[cellId]!] : fullDomain;
+            clues.containsKey(cellId) ? [clues[cellId]] : fullDomain;
       }
     }
 
-    NaryPredicate createPredicate(List<String> varNames, List<String> opList) {
-      return (assign) {
+    NaryPredicate createPredicate(List<String> varNames, List<String> opList) => (assign) {
         final values = varNames.map((v) => assign[v]).toList();
         final operands = values.sublist(0, config.gridN - 1);
         final result = values.last;
         if (operands.any((op) => op == null) || result == null) return false;
         return evaluate(operands, opList) == result;
       };
-    }
 
-    for (int r = 0; r < config.gridN; r++) {
+    for (var r = 0; r < config.gridN; r++) {
       final rowVars = List<String>.generate(config.gridN, (c) => id(r, c));
       naryConstraints.add(NaryConstraint(
           vars: rowVars, predicate: createPredicate(rowVars, ops['rows']![r])));
     }
 
-    for (int c = 0; c < config.gridN; c++) {
+    for (var c = 0; c < config.gridN; c++) {
       final colVars = List<String>.generate(config.gridN, (r) => id(r, c));
       naryConstraints.add(NaryConstraint(
           vars: colVars, predicate: createPredicate(colVars, ops['cols']![c])));
@@ -234,33 +232,31 @@ class PuzzleGenerator {
     final fullDomain = List<int>.generate(
         config.maxN - config.minN + 1, (i) => i + config.minN);
 
-    for (int r = 0; r < config.gridN; r++) {
-      for (int c = 0; c < config.gridN; c++) {
+    for (var r = 0; r < config.gridN; r++) {
+      for (var c = 0; c < config.gridN; c++) {
         final cellId = id(r, c);
         if (clues.containsKey(cellId)) {
-          p.addVariable(cellId, [clues[cellId]!]);
+          p.addVariable(cellId, [clues[cellId]]);
         } else {
           p.addVariable(cellId, fullDomain);
         }
       }
     }
 
-    NaryPredicate createPredicate(List<String> varNames, List<String> opList) {
-      return (assign) {
+    NaryPredicate createPredicate(List<String> varNames, List<String> opList) => (assign) {
         final values = varNames.map((v) => assign[v]).toList();
         final operands = values.sublist(0, config.gridN - 1);
         final result = values.last;
         if (operands.any((op) => op == null) || result == null) return false;
         return evaluate(operands, opList) == result;
       };
-    }
 
-    for (int r = 0; r < config.gridN; r++) {
+    for (var r = 0; r < config.gridN; r++) {
       final rowVars = List<String>.generate(config.gridN, (c) => id(r, c));
       p.addConstraint(rowVars, createPredicate(rowVars, ops['rows']![r]));
     }
 
-    for (int c = 0; c < config.gridN; c++) {
+    for (var c = 0; c < config.gridN; c++) {
       final colVars = List<String>.generate(config.gridN, (r) => id(r, c));
       p.addConstraint(colVars, createPredicate(colVars, ops['cols']![c]));
     }
@@ -270,13 +266,13 @@ class PuzzleGenerator {
   String asciiGrid(
       Map<String, dynamic> solution, Map<String, String> ops, int n) {
     final buffer = StringBuffer();
-    final hLine = '+' + ('-' * (n * 4 + (n - 1) * 3)) + '+\n';
+    final hLine = '+${'-' * (n * 4 + (n - 1) * 3)}+\n';
     buffer.write(hLine);
-    for (int r = 0; r < n; r++) {
+    for (var r = 0; r < n; r++) {
       buffer.write('|');
-      for (int c = 0; c < n; c++) {
+      for (var c = 0; c < n; c++) {
         final valStr = solution[id(r, c)]?.toString() ?? '?';
-        buffer.write(valStr.padLeft(4, ' '));
+        buffer.write(valStr.padLeft(4));
         if (c < n - 2) {
           buffer.write(' ${ops[opId(r, null, 'row', c)]} ');
         } else if (c == n - 2) {
@@ -286,7 +282,7 @@ class PuzzleGenerator {
       buffer.write(' |\n');
       if (r < n - 1) {
         buffer.write('|');
-        for (int c = 0; c < n; c++) {
+        for (var c = 0; c < n; c++) {
           final op = (r < n - 2) ? ops[opId(null, c, 'col', r)] : '=';
           buffer.write('  $op ');
           if (c < n - 1) buffer.write('   ');
@@ -308,19 +304,19 @@ class PuzzleGenerator {
       print('(Seeding with up to ${config.numClues} random clues)');
     }
 
-    for (int attempt = 1; attempt <= config.maxAttempts; attempt++) {
+    for (var attempt = 1; attempt <= config.maxAttempts; attempt++) {
       print('\n--- Attempt $attempt/${config.maxAttempts} ---');
 
       // Step 1: Randomly generate operators.
       final opLayout = {'rows': <List<String>>[], 'cols': <List<String>>[]};
       final opDetails = <String, String>{};
-      for (int r = 0; r < config.gridN; r++) {
+      for (var r = 0; r < config.gridN; r++) {
         final ops =
             List.generate(config.gridN - 2, (_) => randChoice(config.ops));
         opLayout['rows']!.add(ops);
         ops.asMap().forEach((i, op) => opDetails[opId(r, null, 'row', i)] = op);
       }
-      for (int c = 0; c < config.gridN; c++) {
+      for (var c = 0; c < config.gridN; c++) {
         final ops =
             List.generate(config.gridN - 2, (_) => randChoice(config.ops));
         opLayout['cols']!.add(ops);
@@ -352,36 +348,37 @@ class PuzzleGenerator {
           .toList()
         ..shuffle(_random);
       final numCluesToPlace = min(config.numClues, validClueCells.length);
-      for (int i = 0; i < numCluesToPlace; i++) {
+      for (var i = 0; i < numCluesToPlace; i++) {
         clues[validClueCells[i]] = randInt(config.minN, config.maxN);
       }
 
       // Step 4: Display the generated puzzle skeleton.
-      print("Generated puzzle layout:");
+      print('Generated puzzle layout:');
       print(asciiGrid(clues, opDetails, config.gridN));
 
       // Step 5: Model and attempt to solve the puzzle using both methods.
 
       // [Method 1: The Old Way]
-      print("[1] Solving with the OLD WAY (Manual CspProblem)...");
+      print('[1] Solving with the OLD WAY (Manual CspProblem)...');
       final oldWayProblem = buildPuzzleConstraintsOldWay(opLayout, clues);
       final oldWaySolution = await CSP.solve(oldWayProblem);
 
       // [Method 2: The New Way]
-      print("[2] Solving with the NEW WAY (Problem Builder)...");
+      print('[2] Solving with the NEW WAY (Problem Builder)...');
       final newWayProblemBuilder =
           buildPuzzleConstraintsNewWay(opLayout, clues);
-      final newWaySolution = await newWayProblemBuilder.getSolution();
+      await newWayProblemBuilder.getSolution();
 
       // Step 6: Report the outcome.
       // The solution from both methods should be identical.
       if (oldWaySolution != 'FAILURE') {
         print(
-            "\n✅ SUCCESS! Both methods found a solution for the layout above:");
-        print(asciiGrid(oldWaySolution, opDetails, config.gridN));
+            '\n✅ SUCCESS! Both methods found a solution for the layout above:');
+        print(asciiGrid(
+            oldWaySolution as Map<String, dynamic>, opDetails, config.gridN));
         return; // Exit successfully.
       } else {
-        print("❌ Both methods failed to solve. Generating new layout.");
+        print('❌ Both methods failed to solve. Generating new layout.');
       }
     }
     print(

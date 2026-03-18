@@ -1,14 +1,14 @@
 // String constraint parsing functionality for the CSP library.
 
-import 'types.dart';
 import 'builtin_constraints.dart';
+import 'types.dart';
 
 /// Exception thrown when a constraint string cannot be parsed
 class ConstraintParseException implements Exception {
-  final String message;
-  final String constraint;
 
   ConstraintParseException(this.message, this.constraint);
+  final String message;
+  final String constraint;
 
   @override
   String toString() => 'ConstraintParseException: $message in "$constraint"';
@@ -16,12 +16,12 @@ class ConstraintParseException implements Exception {
 
 /// Represents a parsed constraint with its variables and predicate
 class ParsedConstraint {
+
+  ParsedConstraint(this.predicate, this.variables, this.type);
   final dynamic
       predicate; // BinaryPredicate, NaryPredicate, or VariableConstraint
   final List<String> variables;
   final ConstraintType type;
-
-  ParsedConstraint(this.predicate, this.variables, this.type);
 }
 
 /// Types of constraints for better handling
@@ -34,30 +34,28 @@ enum ConstraintType {
 
 /// Variable constraint where one variable equals a computed value from others
 abstract class VariableConstraint {
-  final String targetVariable;
-  final List<String> sourceVariables;
 
   VariableConstraint(this.targetVariable, this.sourceVariables);
+  final String targetVariable;
+  final List<String> sourceVariables;
 
   NaryPredicate toPredicate();
 }
 
 /// Constraint where one variable equals the sum of others: C = A + B
 class VariableSumConstraint extends VariableConstraint {
+
+  VariableSumConstraint(super.targetVariable, super.sourceVariables,
+      {this.multipliers});
   final List<num>? multipliers;
 
-  VariableSumConstraint(String targetVariable, List<String> sourceVariables,
-      {this.multipliers})
-      : super(targetVariable, sourceVariables);
-
   @override
-  NaryPredicate toPredicate() {
-    return (Map<String, dynamic> assignment) {
+  NaryPredicate toPredicate() => (Map<String, dynamic> assignment) {
       final targetValue = assignment[targetVariable];
       if (targetValue == null) return true;
 
       num sum = 0;
-      for (int i = 0; i < sourceVariables.length; i++) {
+      for (var i = 0; i < sourceVariables.length; i++) {
         final value = assignment[sourceVariables[i]];
         if (value == null) return true;
         final multiplier = multipliers?[i] ?? 1;
@@ -66,17 +64,14 @@ class VariableSumConstraint extends VariableConstraint {
 
       return sum == (targetValue as num);
     };
-  }
 }
 
 /// Constraint where one variable equals the product of others: C = A * B
 class VariableProductConstraint extends VariableConstraint {
-  VariableProductConstraint(String targetVariable, List<String> sourceVariables)
-      : super(targetVariable, sourceVariables);
+  VariableProductConstraint(super.targetVariable, super.sourceVariables);
 
   @override
-  NaryPredicate toPredicate() {
-    return (Map<String, dynamic> assignment) {
+  NaryPredicate toPredicate() => (Map<String, dynamic> assignment) {
       final targetValue = assignment[targetVariable];
       if (targetValue == null) return true;
 
@@ -84,12 +79,11 @@ class VariableProductConstraint extends VariableConstraint {
       for (final varName in sourceVariables) {
         final value = assignment[varName];
         if (value == null) return true;
-        product *= (value as num);
+        product *= value as num;
       }
 
       return product == (targetValue as num);
     };
-  }
 }
 
 /// Advanced expression evaluator for mathematical expressions
@@ -98,7 +92,7 @@ class ExpressionEvaluator {
   static num evaluateNumeric(
       String expression, Map<String, dynamic> variables) {
     // Replace variables with their values
-    String substituted = expression;
+    var substituted = expression;
 
     // Sort variables by length (longest first) to avoid partial matches
     final sortedVars = variables.keys.toList()
@@ -210,7 +204,7 @@ class ExpressionEvaluator {
     while (i < expr.length) {
       final char = expr[i];
 
-      if ((char == '+' || char == '-')) {
+      if (char == '+' || char == '-') {
         // Check if this is a negative number at the start or after an operator
         final isNegativeNumber = char == '-' &&
             (i == 0 ||
@@ -244,11 +238,11 @@ class ExpressionEvaluator {
     if (tokens.length == 1) return _evaluateMultDiv(tokens[0]);
 
     // Evaluate each token for multiplication and division first
-    final values = tokens.map((token) => _evaluateMultDiv(token)).toList();
+    final values = tokens.map(_evaluateMultDiv).toList();
 
     // Apply addition and subtraction
-    num result = values[0];
-    for (int i = 0; i < operators.length && i + 1 < values.length; i++) {
+    var result = values[0];
+    for (var i = 0; i < operators.length && i + 1 < values.length; i++) {
       if (operators[i] == '+') {
         result += values[i + 1];
       } else if (operators[i] == '-') {
@@ -266,7 +260,7 @@ class ExpressionEvaluator {
     final operators = <String>[];
 
     var currentToken = '';
-    for (int i = 0; i < expr.length; i++) {
+    for (var i = 0; i < expr.length; i++) {
       final char = expr[i];
       if (char == '*' || char == '/') {
         if (currentToken.isNotEmpty) {
@@ -291,7 +285,7 @@ class ExpressionEvaluator {
 
     // Apply multiplication and division left to right
     num result = values[0];
-    for (int i = 0; i < operators.length && i + 1 < values.length; i++) {
+    for (var i = 0; i < operators.length && i + 1 < values.length; i++) {
       if (operators[i] == '*') {
         result *= values[i + 1];
       } else if (operators[i] == '/') {
@@ -475,16 +469,16 @@ class ConstraintParser {
           BinaryPredicate predicate;
           switch (op) {
             case '>':
-              predicate = (dynamic a, dynamic b) => (a as num) > (b as num);
+              predicate = (a, b) => (a! as num) > (b! as num);
               break;
             case '>=':
-              predicate = (dynamic a, dynamic b) => (a as num) >= (b as num);
+              predicate = (a, b) => (a! as num) >= (b! as num);
               break;
             case '<':
-              predicate = (dynamic a, dynamic b) => (a as num) < (b as num);
+              predicate = (a, b) => (a! as num) < (b! as num);
               break;
             case '<=':
-              predicate = (dynamic a, dynamic b) => (a as num) <= (b as num);
+              predicate = (a, b) => (a! as num) <= (b! as num);
               break;
             default:
               continue;
@@ -498,9 +492,7 @@ class ConstraintParser {
     return null;
   }
 
-  static bool _isChainedInequality(String constraint) {
-    return constraint.split('!=').length > 2;
-  }
+  static bool _isChainedInequality(String constraint) => constraint.split('!=').length > 2;
 
   static ParsedConstraint? _parseVariableConstantConstraint(
       String constraint, List<String> variables) {
@@ -848,7 +840,7 @@ class ConstraintParser {
   /// Create a general expression constraint using the improved evaluator
   static ParsedConstraint _createExpressionConstraint(
       String constraint, List<String> variables) {
-    final predicate = (Map<String, dynamic> assignment) {
+    bool predicate(Map<String, dynamic> assignment) {
       try {
         // Check if all variables in the constraint are assigned
         for (final variable in variables) {
@@ -862,7 +854,7 @@ class ConstraintParser {
         // If we can't evaluate it, assume it's false
         return false;
       }
-    };
+    }
 
     return ParsedConstraint(predicate, variables, ConstraintType.nary);
   }

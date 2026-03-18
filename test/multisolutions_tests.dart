@@ -1,5 +1,5 @@
-import 'package:test/test.dart';
 import 'package:dart_csp/dart_csp.dart';
+import 'package:test/test.dart';
 
 void main() {
   group('Problem Class Core Features', () {
@@ -85,7 +85,7 @@ void main() {
       p.addStringConstraint('A * B + C == 11');
       p.addAllDifferent(['A', 'B', 'C']);
 
-      final solution = await p.getSolution() as Map;
+      final solution = await p.getSolution() as Map<String, dynamic>;
       expect(solution['A'] * solution['B'] + solution['C'], equals(11));
     });
 
@@ -94,15 +94,15 @@ void main() {
       p.addVariables(['A', 'B'], [-10, -5, 5, 10]);
       p.addStringConstraint('A + B == -15');
       final solution = await p.getSolution();
-      expect(solution, isA<Map>());
-      expect((solution as Map)['A'] + solution['B'], equals(-15));
+      expect(solution, isA<Map<String, dynamic>>());
+      expect((solution as Map<String, dynamic>)['A'] + solution['B'], equals(-15));
     });
 
     test('parses expressions with extra whitespace', () async {
       final p = Problem();
       p.addVariables(['A', 'B', 'C'], [1, 2, 3, 4, 5]);
       p.addStringConstraint('  A  +  B   == C ');
-      final solution = await p.getSolution() as Map;
+      final solution = await p.getSolution() as Map<String, dynamic>;
       expect(solution['A'] + solution['B'], equals(solution['C']));
     });
 
@@ -217,7 +217,7 @@ void main() {
 
       final solution = await p.solveWithMinConflicts(maxSteps: 2000);
 
-      if (solution is Map) {
+      if (solution is Map<String, dynamic>) {
         print('Min-Conflicts found a solution for Map Coloring: $solution');
         // Verify the solution is valid
         expect(solution['WA'] != solution['NT'], isTrue);

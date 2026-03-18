@@ -1,7 +1,8 @@
 /// Comprehensive test suite for the dart_csp library
+library;
 
-import 'package:test/test.dart';
 import 'package:dart_csp/dart_csp.dart';
+import 'package:test/test.dart';
 
 void main() {
   group('Basic Problem Creation', () {
@@ -41,10 +42,10 @@ void main() {
     test('simple binary constraint', () async {
       final p = Problem();
       p.addVariables(['A', 'B'], [1, 2, 3]);
-      p.addConstraint(['A', 'B'], (a, b) => a != b);
+      p.addConstraint(['A', 'B'], (dynamic a, dynamic b) => a != b);
 
       final solution = await p.getSolution();
-      expect(solution, isA<Map>());
+      expect(solution, isA<Map<String, dynamic>>());
       final s = solution as Map<String, dynamic>;
       expect(s['A'] != s['B'], isTrue);
     });
@@ -55,7 +56,7 @@ void main() {
       p.addAllDifferent(['X', 'Y']);
 
       final solution = await p.getSolution();
-      expect(solution, isA<Map>());
+      expect(solution, isA<Map<String, dynamic>>());
       final s = solution as Map<String, dynamic>;
       expect(s['X'] != s['Y'], isTrue);
     });
@@ -68,7 +69,7 @@ void main() {
       p.addAllDifferent(['A', 'B', 'C']);
 
       final solution = await p.getSolution();
-      expect(solution, isA<Map>());
+      expect(solution, isA<Map<String, dynamic>>());
       final s = solution as Map<String, dynamic>;
 
       final values = s.values.toSet();
@@ -81,7 +82,7 @@ void main() {
       p.addExactSum(['A', 'B'], 7);
 
       final solution = await p.getSolution();
-      expect(solution, isA<Map>());
+      expect(solution, isA<Map<String, dynamic>>());
       final s = solution as Map<String, dynamic>;
       expect(s['A'] + s['B'], equals(7));
     });
@@ -92,7 +93,7 @@ void main() {
       p.addExactProduct(['X', 'Y'], 12);
 
       final solution = await p.getSolution();
-      expect(solution, isA<Map>());
+      expect(solution, isA<Map<String, dynamic>>());
       final s = solution as Map<String, dynamic>;
       expect(s['X'] * s['Y'], equals(12));
     });
@@ -105,7 +106,7 @@ void main() {
       p.addStringConstraint('A != B');
 
       final solution = await p.getSolution();
-      expect(solution, isA<Map>());
+      expect(solution, isA<Map<String, dynamic>>());
       final s = solution as Map<String, dynamic>;
       expect(s['A'] != s['B'], isTrue);
     });
@@ -116,7 +117,7 @@ void main() {
       p.addStringConstraint('A + B == 6');
 
       final solution = await p.getSolution();
-      expect(solution, isA<Map>());
+      expect(solution, isA<Map<String, dynamic>>());
       final s = solution as Map<String, dynamic>;
       expect(s['A'] + s['B'], equals(6));
     });
@@ -127,7 +128,7 @@ void main() {
       p.addStringConstraint('A + B == C');
 
       final solution = await p.getSolution();
-      expect(solution, isA<Map>());
+      expect(solution, isA<Map<String, dynamic>>());
       final s = solution as Map<String, dynamic>;
       expect(s['A'] + s['B'], equals(s['C']));
     });
@@ -138,7 +139,7 @@ void main() {
       p.addStringConstraint('A != B != C');
 
       final solution = await p.getSolution();
-      expect(solution, isA<Map>());
+      expect(solution, isA<Map<String, dynamic>>());
       final s = solution as Map<String, dynamic>;
 
       final values = s.values.toSet();
@@ -151,7 +152,7 @@ void main() {
       p.addStringConstraint('A < B');
 
       final solution = await p.getSolution();
-      expect(solution, isA<Map>());
+      expect(solution, isA<Map<String, dynamic>>());
       final s = solution as Map<String, dynamic>;
       expect(s['A'] < s['B'], isTrue);
     });
@@ -162,9 +163,9 @@ void main() {
       p.addStringConstraint('5 <= A + B <= 7');
 
       final solution = await p.getSolution();
-      expect(solution, isA<Map>());
+      expect(solution, isA<Map<String, dynamic>>());
       final s = solution as Map<String, dynamic>;
-      final sum = s['A'] + s['B'];
+      final sum = (s['A'] as num) + (s['B'] as num);
       expect(sum >= 5 && sum <= 7, isTrue);
     });
 
@@ -212,10 +213,10 @@ void main() {
       p.addExactSum(['A3', 'B2', 'C1'], 15);
 
       final solution = await p.getSolution();
-      expect(solution, isA<Map>());
+      expect(solution, isA<Map<String, dynamic>>());
 
-      if (solution is Map) {
-        final s = solution as Map<String, dynamic>;
+      if (solution is Map<String, dynamic>) {
+        final s = solution;
 
         // Check all different
         final values = s.values.toSet();
@@ -242,28 +243,26 @@ void main() {
       p.addAllDifferent(queens);
 
       // No diagonal attacks
-      for (int i = 0; i < 4; i++) {
-        for (int j = i + 1; j < 4; j++) {
+      for (var i = 0; i < 4; i++) {
+        for (var j = i + 1; j < 4; j++) {
           final colDiff = j - i;
-          p.addConstraint([queens[i], queens[j]], (posI, posJ) {
-            return (posI - posJ).abs() != colDiff;
-          });
+          p.addConstraint([queens[i], queens[j]], (dynamic posI, dynamic posJ) => ((posI as int) - (posJ as int)).abs() != colDiff);
         }
       }
 
       final solution = await p.getSolution();
-      expect(solution, isA<Map>());
+      expect(solution, isA<Map<String, dynamic>>());
 
-      if (solution is Map) {
-        final s = solution as Map<String, dynamic>;
+      if (solution is Map<String, dynamic>) {
+        final s = solution;
 
         // Check no same column
         final positions = s.values.toSet();
         expect(positions.length, equals(4));
 
         // Check no diagonal attacks
-        for (int i = 0; i < 4; i++) {
-          for (int j = i + 1; j < 4; j++) {
+        for (var i = 0; i < 4; i++) {
+          for (var j = i + 1; j < 4; j++) {
             final posI = s['Q${i + 1}'];
             final posJ = s['Q${j + 1}'];
             final rowDiff = (posI - posJ).abs();
@@ -286,10 +285,10 @@ void main() {
           ['A != B', 'A != C', 'B != C', 'B != D', 'C != D']);
 
       final solution = await p.getSolution();
-      expect(solution, isA<Map>());
+      expect(solution, isA<Map<String, dynamic>>());
 
-      if (solution is Map) {
-        final s = solution as Map<String, dynamic>;
+      if (solution is Map<String, dynamic>) {
+        final s = solution;
         expect(s['A'] != s['B'], isTrue);
         expect(s['A'] != s['C'], isTrue);
         expect(s['B'] != s['C'], isTrue);
@@ -340,7 +339,7 @@ void main() {
     test('getAllSolutions returns a list of all solutions', () async {
       final p = createMultiSolutionProblem();
       final solutions = await p.getAllSolutions();
-      expect(solutions, isA<List>());
+      expect(solutions, isA<List<Map<String, dynamic>>>());
       expect(solutions, hasLength(3));
     });
 
@@ -424,7 +423,7 @@ void main() {
       final solution = await solveAllDifferent(
           variables: ['A', 'B', 'C'], domain: [1, 2, 3]);
 
-      expect(solution, isA<Map>());
+      expect(solution, isA<Map<String, dynamic>>());
       final s = solution as Map<String, dynamic>;
       final values = s.values.toSet();
       expect(values.length, equals(3));
@@ -434,7 +433,7 @@ void main() {
       final solution = await solveSumProblem(
           variables: ['X', 'Y'], domain: [1, 2, 3, 4, 5], targetSum: 7);
 
-      expect(solution, isA<Map>());
+      expect(solution, isA<Map<String, dynamic>>());
       final s = solution as Map<String, dynamic>;
       expect(s['X'] + s['Y'], equals(7));
     });
@@ -448,7 +447,7 @@ void main() {
         'A + B >= 4'
       ]);
 
-      expect(solution, isA<Map>());
+      expect(solution, isA<Map<String, dynamic>>());
       final s = solution as Map<String, dynamic>;
       expect(s['A'] != s['B'], isTrue);
       expect(s['A'] + s['B'] >= 4, isTrue);
@@ -519,7 +518,7 @@ void main() {
       p.addStringConstraint('A * B + C == 10');
 
       final solution = await p.getSolution();
-      expect(solution, isA<Map>());
+      expect(solution, isA<Map<String, dynamic>>());
       final s = solution as Map<String, dynamic>;
       expect(s['A'] * s['B'] + s['C'], equals(10));
     });
@@ -531,7 +530,7 @@ void main() {
           ['X != Y', 'Y != Z', 'X + Y + Z == 10', 'X < Y', 'Y < Z']);
 
       final solution = await p.getSolution();
-      expect(solution, isA<Map>());
+      expect(solution, isA<Map<String, dynamic>>());
       final s = solution as Map<String, dynamic>;
 
       expect(s['X'] != s['Y'], isTrue);
@@ -562,12 +561,10 @@ void main() {
       p.addAllDifferent(queens);
 
       // No diagonal attacks
-      for (int i = 0; i < n; i++) {
-        for (int j = i + 1; j < n; j++) {
+      for (var i = 0; i < n; i++) {
+        for (var j = i + 1; j < n; j++) {
           final colDiff = j - i;
-          p.addConstraint([queens[i], queens[j]], (posI, posJ) {
-            return (posI - posJ).abs() != colDiff;
-          });
+          p.addConstraint([queens[i], queens[j]], (dynamic posI, dynamic posJ) => ((posI as int) - (posJ as int)).abs() != colDiff);
         }
       }
 
@@ -576,8 +573,8 @@ void main() {
 
       // We don't fail the test if no solution is found, as it's possible.
       // But IF a solution is returned, it MUST be valid.
-      if (solution is Map) {
-        final s = solution as Map<String, dynamic>;
+      if (solution is Map<String, dynamic>) {
+        final s = solution;
         print('Min-Conflicts found a solution for 8-Queens: $s');
 
         // Check no same column
@@ -585,8 +582,8 @@ void main() {
         expect(positions.length, equals(n));
 
         // Check no diagonal attacks
-        for (int i = 0; i < n; i++) {
-          for (int j = i + 1; j < n; j++) {
+        for (var i = 0; i < n; i++) {
+          for (var j = i + 1; j < n; j++) {
             final posI = s['Q${i + 1}'];
             final posJ = s['Q${j + 1}'];
             final rowDiff = (posI - posJ).abs();
@@ -599,6 +596,6 @@ void main() {
         print('Min-Conflicts did not find a solution for 8-Queens in time.');
         expect(solution, equals('FAILURE'));
       }
-    }, timeout: Timeout(Duration(seconds: 10)));
+    }, timeout: const Timeout(Duration(seconds: 10)));
   });
 }

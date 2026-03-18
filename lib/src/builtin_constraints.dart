@@ -3,6 +3,8 @@
 /// Built-in constraint factory functions for common CSP constraint types.
 /// These are much faster than generic lambda functions and provide better
 /// error messages and debugging support.
+library;
+
 
 import 'types.dart';
 
@@ -17,18 +19,14 @@ import 'types.dart';
 /// p.addVariables(['A', 'B', 'C'], [1, 2, 3]);
 /// p.addConstraint(['A', 'B', 'C'], allDifferent());
 /// ```
-NaryPredicate allDifferent() {
-  return (Map<String, dynamic> assignment) {
+NaryPredicate allDifferent() => (Map<String, dynamic> assignment) {
     final values = assignment.values.toSet();
     return values.length == assignment.length; // All values must be unique
   };
-}
 
 /// Creates a binary all-different constraint for exactly 2 variables
 /// More efficient than the n-ary version for 2 variables
-BinaryPredicate allDifferentBinary() {
-  return (dynamic a, dynamic b) => a != b;
-}
+BinaryPredicate allDifferentBinary() => (a, b) => a != b;
 
 /// Creates a constraint ensuring all variables have the same value
 ///
@@ -38,19 +36,15 @@ BinaryPredicate allDifferentBinary() {
 /// ```dart
 /// p.addConstraint(['X', 'Y', 'Z'], allEqual());
 /// ```
-NaryPredicate allEqual() {
-  return (Map<String, dynamic> assignment) {
+NaryPredicate allEqual() => (Map<String, dynamic> assignment) {
     if (assignment.isEmpty) return true;
 
     final firstValue = assignment.values.first;
     return assignment.values.every((value) => value == firstValue);
   };
-}
 
 /// Binary version for exactly 2 variables
-BinaryPredicate allEqualBinary() {
-  return (dynamic a, dynamic b) => a == b;
-}
+BinaryPredicate allEqualBinary() => (a, b) => a == b;
 
 /// Creates a constraint ensuring variables sum to an exact value
 ///
@@ -61,12 +55,11 @@ BinaryPredicate allEqualBinary() {
 /// p.addConstraint(['A', 'B', 'C'], exactSum(15));
 /// p.addConstraint(['X', 'Y'], exactSum(10, multipliers: [2, 3])); // 2*X + 3*Y = 10
 /// ```
-NaryPredicate exactSum(num targetSum, {List<num>? multipliers}) {
-  return (Map<String, dynamic> assignment) {
+NaryPredicate exactSum(num targetSum, {List<num>? multipliers}) => (Map<String, dynamic> assignment) {
     if (assignment.isEmpty) return targetSum == 0;
 
     num sum = 0;
-    int index = 0;
+    var index = 0;
 
     for (final value in assignment.values) {
       final multiplier = multipliers?[index] ?? 1;
@@ -76,15 +69,13 @@ NaryPredicate exactSum(num targetSum, {List<num>? multipliers}) {
 
     return sum == targetSum;
   };
-}
 
 /// Creates a constraint ensuring variables sum to at least a minimum value
-NaryPredicate minSum(num minimumSum, {List<num>? multipliers}) {
-  return (Map<String, dynamic> assignment) {
+NaryPredicate minSum(num minimumSum, {List<num>? multipliers}) => (Map<String, dynamic> assignment) {
     if (assignment.isEmpty) return minimumSum <= 0;
 
     num sum = 0;
-    int index = 0;
+    var index = 0;
 
     for (final value in assignment.values) {
       final multiplier = multipliers?[index] ?? 1;
@@ -94,15 +85,13 @@ NaryPredicate minSum(num minimumSum, {List<num>? multipliers}) {
 
     return sum >= minimumSum;
   };
-}
 
 /// Creates a constraint ensuring variables sum to at most a maximum value
-NaryPredicate maxSum(num maximumSum, {List<num>? multipliers}) {
-  return (Map<String, dynamic> assignment) {
+NaryPredicate maxSum(num maximumSum, {List<num>? multipliers}) => (Map<String, dynamic> assignment) {
     if (assignment.isEmpty) return true;
 
     num sum = 0;
-    int index = 0;
+    var index = 0;
 
     for (final value in assignment.values) {
       final multiplier = multipliers?[index] ?? 1;
@@ -112,15 +101,13 @@ NaryPredicate maxSum(num maximumSum, {List<num>? multipliers}) {
 
     return sum <= maximumSum;
   };
-}
 
 /// Creates a constraint ensuring variables sum within a range
-NaryPredicate sumInRange(num minSum, num maxSum, {List<num>? multipliers}) {
-  return (Map<String, dynamic> assignment) {
+NaryPredicate sumInRange(num minSum, num maxSum, {List<num>? multipliers}) => (Map<String, dynamic> assignment) {
     if (assignment.isEmpty) return minSum <= 0 && maxSum >= 0;
 
     num sum = 0;
-    int index = 0;
+    var index = 0;
 
     for (final value in assignment.values) {
       final multiplier = multipliers?[index] ?? 1;
@@ -130,141 +117,111 @@ NaryPredicate sumInRange(num minSum, num maxSum, {List<num>? multipliers}) {
 
     return sum >= minSum && sum <= maxSum;
   };
-}
 
 // Binary versions of sum constraints for 2-variable optimization
 BinaryPredicate exactSumBinary(num targetSum, {List<num>? multipliers}) {
   final m1 = multipliers?[0] ?? 1;
   final m2 = multipliers?[1] ?? 1;
-  return (dynamic a, dynamic b) =>
-      ((a as num) * m1 + (b as num) * m2) == targetSum;
+  return (a, b) =>
+      ((a! as num) * m1 + (b! as num) * m2) == targetSum;
 }
 
 BinaryPredicate minSumBinary(num minimumSum, {List<num>? multipliers}) {
   final m1 = multipliers?[0] ?? 1;
   final m2 = multipliers?[1] ?? 1;
-  return (dynamic a, dynamic b) =>
-      ((a as num) * m1 + (b as num) * m2) >= minimumSum;
+  return (a, b) =>
+      ((a! as num) * m1 + (b! as num) * m2) >= minimumSum;
 }
 
 BinaryPredicate maxSumBinary(num maximumSum, {List<num>? multipliers}) {
   final m1 = multipliers?[0] ?? 1;
   final m2 = multipliers?[1] ?? 1;
-  return (dynamic a, dynamic b) =>
-      ((a as num) * m1 + (b as num) * m2) <= maximumSum;
+  return (a, b) =>
+      ((a! as num) * m1 + (b! as num) * m2) <= maximumSum;
 }
 
 BinaryPredicate sumInRangeBinary(num minSum, num maxSum,
     {List<num>? multipliers}) {
   final m1 = multipliers?[0] ?? 1;
   final m2 = multipliers?[1] ?? 1;
-  return (dynamic a, dynamic b) {
-    final sum = (a as num) * m1 + (b as num) * m2;
+  return (a, b) {
+    final sum = (a! as num) * m1 + (b! as num) * m2;
     return sum >= minSum && sum <= maxSum;
   };
 }
 
-BinaryPredicate exactProductBinary(num targetProduct) {
-  return (dynamic a, dynamic b) => (a as num) * (b as num) == targetProduct;
-}
+BinaryPredicate exactProductBinary(num targetProduct) => (a, b) => (a! as num) * (b! as num) == targetProduct;
 
-BinaryPredicate minProductBinary(num minimumProduct) {
-  return (dynamic a, dynamic b) => (a as num) * (b as num) >= minimumProduct;
-}
+BinaryPredicate minProductBinary(num minimumProduct) => (a, b) => (a! as num) * (b! as num) >= minimumProduct;
 
-BinaryPredicate maxProductBinary(num maximumProduct) {
-  return (dynamic a, dynamic b) => (a as num) * (b as num) <= maximumProduct;
-}
+BinaryPredicate maxProductBinary(num maximumProduct) => (a, b) => (a! as num) * (b! as num) <= maximumProduct;
 
 /// Creates a constraint ensuring variables multiply to an exact value
-NaryPredicate exactProduct(num targetProduct) {
-  return (Map<String, dynamic> assignment) {
+NaryPredicate exactProduct(num targetProduct) => (Map<String, dynamic> assignment) {
     if (assignment.isEmpty) return targetProduct == 1;
 
     num product = 1;
     for (final value in assignment.values) {
-      product *= (value as num);
+      product *= value as num;
     }
 
     return product == targetProduct;
   };
-}
 
 /// Creates a constraint ensuring variables multiply to at least a minimum
-NaryPredicate minProduct(num minimumProduct) {
-  return (Map<String, dynamic> assignment) {
+NaryPredicate minProduct(num minimumProduct) => (Map<String, dynamic> assignment) {
     if (assignment.isEmpty) return minimumProduct <= 1;
 
     num product = 1;
     for (final value in assignment.values) {
-      product *= (value as num);
+      product *= value as num;
     }
 
     return product >= minimumProduct;
   };
-}
 
 /// Creates a constraint ensuring variables multiply to at most a maximum
-NaryPredicate maxProduct(num maximumProduct) {
-  return (Map<String, dynamic> assignment) {
+NaryPredicate maxProduct(num maximumProduct) => (Map<String, dynamic> assignment) {
     if (assignment.isEmpty) return true;
 
     num product = 1;
     for (final value in assignment.values) {
-      product *= (value as num);
+      product *= value as num;
     }
 
     return product <= maximumProduct;
   };
-}
 
 /// Creates a constraint ensuring all variables take values from allowed set
-NaryPredicate inSet(Set<dynamic> allowedValues) {
-  return (Map<String, dynamic> assignment) {
-    return assignment.values.every((value) => allowedValues.contains(value));
-  };
-}
+NaryPredicate inSet(Set<dynamic> allowedValues) => (Map<String, dynamic> assignment) => assignment.values.every((value) => allowedValues.contains(value));
 
 /// Creates a constraint ensuring no variables take values from forbidden set
-NaryPredicate notInSet(Set<dynamic> forbiddenValues) {
-  return (Map<String, dynamic> assignment) {
-    return assignment.values.every((value) => !forbiddenValues.contains(value));
-  };
-}
+NaryPredicate notInSet(Set<dynamic> forbiddenValues) => (Map<String, dynamic> assignment) => assignment.values.every((value) => !forbiddenValues.contains(value));
 
 // Binary versions of set membership constraints for 2-variable optimization
-BinaryPredicate inSetBinary(Set<dynamic> allowedValues) {
-  return (dynamic a, dynamic b) =>
+BinaryPredicate inSetBinary(Set<dynamic> allowedValues) => (a, b) =>
       allowedValues.contains(a) && allowedValues.contains(b);
-}
 
-BinaryPredicate notInSetBinary(Set<dynamic> forbiddenValues) {
-  return (dynamic a, dynamic b) =>
+BinaryPredicate notInSetBinary(Set<dynamic> forbiddenValues) => (a, b) =>
       !forbiddenValues.contains(a) && !forbiddenValues.contains(b);
-}
 
 /// Creates a constraint ensuring at least N variables have values in the set
-NaryPredicate someInSet(Set<dynamic> values, int minimumCount) {
-  return (Map<String, dynamic> assignment) {
+NaryPredicate someInSet(Set<dynamic> values, int minimumCount) => (Map<String, dynamic> assignment) {
     final count =
         assignment.values.where((value) => values.contains(value)).length;
     return count >= minimumCount;
   };
-}
 
 /// Creates a constraint ensuring at least N variables have values NOT in the set
-NaryPredicate someNotInSet(Set<dynamic> values, int minimumCount) {
-  return (Map<String, dynamic> assignment) {
+NaryPredicate someNotInSet(Set<dynamic> values, int minimumCount) => (Map<String, dynamic> assignment) {
     final count =
         assignment.values.where((value) => !values.contains(value)).length;
     return count >= minimumCount;
   };
-}
 
 /// Creates a constraint ensuring variables are in ascending order
-NaryPredicate ascendingInOrder(List<String> variableOrder) {
-  return (Map<String, dynamic> assignment) {
-    for (int i = 1; i < variableOrder.length; i++) {
+NaryPredicate ascendingInOrder(List<String> variableOrder) => (Map<String, dynamic> assignment) {
+    for (var i = 1; i < variableOrder.length; i++) {
       final current = assignment[variableOrder[i]];
       final previous = assignment[variableOrder[i - 1]];
       if (current == null || previous == null) return true;
@@ -274,12 +231,10 @@ NaryPredicate ascendingInOrder(List<String> variableOrder) {
     }
     return true;
   };
-}
 
 /// Creates a constraint ensuring variables are in strictly ascending order
-NaryPredicate strictlyAscendingInOrder(List<String> variableOrder) {
-  return (Map<String, dynamic> assignment) {
-    for (int i = 1; i < variableOrder.length; i++) {
+NaryPredicate strictlyAscendingInOrder(List<String> variableOrder) => (Map<String, dynamic> assignment) {
+    for (var i = 1; i < variableOrder.length; i++) {
       final current = assignment[variableOrder[i]];
       final previous = assignment[variableOrder[i - 1]];
       if (current == null || previous == null) return true;
@@ -289,12 +244,10 @@ NaryPredicate strictlyAscendingInOrder(List<String> variableOrder) {
     }
     return true;
   };
-}
 
 /// Creates a constraint ensuring variables are in descending order
-NaryPredicate descendingInOrder(List<String> variableOrder) {
-  return (Map<String, dynamic> assignment) {
-    for (int i = 1; i < variableOrder.length; i++) {
+NaryPredicate descendingInOrder(List<String> variableOrder) => (Map<String, dynamic> assignment) {
+    for (var i = 1; i < variableOrder.length; i++) {
       final current = assignment[variableOrder[i]];
       final previous = assignment[variableOrder[i - 1]];
       if (current == null || previous == null) return true;
@@ -304,17 +257,10 @@ NaryPredicate descendingInOrder(List<String> variableOrder) {
     }
     return true;
   };
-}
 
 // Binary versions of ordering constraints for 2-variable optimization
-BinaryPredicate ascendingBinary() {
-  return (dynamic a, dynamic b) => (a as num) <= (b as num);
-}
+BinaryPredicate ascendingBinary() => (a, b) => (a! as num) <= (b! as num);
 
-BinaryPredicate strictlyAscendingBinary() {
-  return (dynamic a, dynamic b) => (a as num) < (b as num);
-}
+BinaryPredicate strictlyAscendingBinary() => (a, b) => (a! as num) < (b! as num);
 
-BinaryPredicate descendingBinary() {
-  return (dynamic a, dynamic b) => (a as num) >= (b as num);
-}
+BinaryPredicate descendingBinary() => (a, b) => (a! as num) >= (b! as num);

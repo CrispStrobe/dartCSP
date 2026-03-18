@@ -1,10 +1,12 @@
 /// Problem builder class and extensions for easy CSP construction.
+library;
 
 import 'dart:async';
-import 'types.dart';
-import 'solver.dart';
+
 import 'builtin_constraints.dart';
 import 'constraint_parser.dart';
+import 'solver.dart';
+import 'types.dart';
 
 /// A user-friendly wrapper class to build a constraint satisfaction problem.
 ///
@@ -84,7 +86,7 @@ class Problem {
   void addConstraint<T extends Function>(List<String> variables, T predicate) {
     if (variables.isEmpty) {
       throw ArgumentError(
-          "addConstraint requires a non-empty list of variables.");
+          'addConstraint requires a non-empty list of variables.');
     }
     for (final v in variables) {
       if (!_variables.containsKey(v)) {
@@ -376,8 +378,8 @@ extension ProblemDebug on Problem {
   /// Print a summary of the problem
   void printSummary() {
     print('CSP Problem Summary:');
-    print('  Variables: ${variableCount}');
-    print('  Constraints: ${constraintCount}');
+    print('  Variables: $variableCount');
+    print('  Constraints: $constraintCount');
     print('  Variables and domains:');
     for (final entry in _variables.entries) {
       print('    ${entry.key}: ${entry.value}');
@@ -398,7 +400,7 @@ extension ProblemDebug on Problem {
     // Check if problem is over-constrained (more constraints than variables)
     if (constraintCount > variableCount * 2) {
       issues.add(
-          'Problem may be over-constrained (${constraintCount} constraints for ${variableCount} variables)');
+          'Problem may be over-constrained ($constraintCount constraints for $variableCount variables)');
     }
 
     // Check for isolated variables (variables with no constraints)
@@ -454,7 +456,7 @@ extension MultipleSolutions on Problem {
   /// print('This problem has $count solutions');
   /// ```
   Future<int> countSolutions() async {
-    int count = 0;
+    var count = 0;
     await for (final _ in getSolutions()) {
       count++;
     }
@@ -476,7 +478,7 @@ extension MultipleSolutions on Problem {
   /// }
   /// ```
   Future<bool> hasMultipleSolutions() async {
-    int count = 0;
+    var count = 0;
     await for (final _ in getSolutions()) {
       count++;
       if (count >= 2) return true;

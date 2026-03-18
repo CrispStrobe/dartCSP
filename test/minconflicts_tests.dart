@@ -1,5 +1,5 @@
-import 'package:test/test.dart';
 import 'package:dart_csp/dart_csp.dart';
+import 'package:test/test.dart';
 
 // ====================================================================
 //  Custom Validator Functions (The "Makes Sense" Checks)
@@ -14,7 +14,7 @@ void printQueensBoard(Map<String, dynamic> solution) {
     // entry.key is like 'Q1', 'Q2', etc.
     final col = int.parse(entry.key.substring(1)) - 1;
     // entry.value is the row
-    final row = entry.value - 1;
+    final row = (entry.value as int) - 1;
 
     if (row < n && col < n) {
       board[row][col] = 'Q';
@@ -34,13 +34,13 @@ bool isQueensSolutionValid(Map<String, dynamic> solution, int n) {
   if (solution.length != n) return false;
 
   final positions = <int>[];
-  for (int i = 0; i < n; i++) {
-    positions.add(solution['Q${i + 1}']);
+  for (var i = 0; i < n; i++) {
+    positions.add(solution['Q${i + 1}'] as int);
   }
 
   // Check for row and diagonal conflicts
-  for (int i = 0; i < n; i++) {
-    for (int j = i + 1; j < n; j++) {
+  for (var i = 0; i < n; i++) {
+    for (var j = i + 1; j < n; j++) {
       // Check for same row
       if (positions[i] == positions[j]) {
         print(
@@ -88,12 +88,10 @@ void main() {
       p.addAllDifferent(queens); // No queens in the same row
 
       // No queens on the same diagonal
-      for (int i = 0; i < n; i++) {
-        for (int j = i + 1; j < n; j++) {
+      for (var i = 0; i < n; i++) {
+        for (var j = i + 1; j < n; j++) {
           final colDiff = j - i;
-          p.addConstraint([queens[i], queens[j]], (posI, posJ) {
-            return (posI - posJ).abs() != colDiff;
-          });
+          p.addConstraint([queens[i], queens[j]], (dynamic posI, dynamic posJ) => ((posI as int) - (posJ as int)).abs() != colDiff);
         }
       }
 
@@ -116,7 +114,7 @@ void main() {
             'Min-Conflicts did not find an 8-Queens solution in time, which is acceptable.');
         expect(solution, equals('FAILURE'));
       }
-    }, timeout: Timeout(Duration(seconds: 15)));
+    }, timeout: const Timeout(Duration(seconds: 15)));
 
     // Test Facet 2: Correctness on a different type of problem (Map Coloring)
     test('solves Map Coloring and produces a valid, non-conflicting solution',
@@ -163,7 +161,7 @@ void main() {
       p.addVariables(['A', 'B', 'C'], [1, 2]);
       p.addAllDifferent(['A', 'B', 'C']);
 
-      final solution = await p.solveWithMinConflicts(maxSteps: 1000);
+      final solution = await p.solveWithMinConflicts();
 
       // For an unsolvable problem, it should never return a solution.
       // It must eventually give up and return 'FAILURE'.
@@ -180,11 +178,11 @@ void main() {
       final domain = List.generate(n, (i) => i + 1);
       p.addVariables(queens, domain);
       p.addAllDifferent(queens);
-      for (int i = 0; i < n; i++) {
-        for (int j = i + 1; j < n; j++) {
+      for (var i = 0; i < n; i++) {
+        for (var j = i + 1; j < n; j++) {
           final colDiff = j - i;
           p.addConstraint([queens[i], queens[j]],
-              (posI, posJ) => (posI - posJ).abs() != colDiff);
+              (dynamic posI, dynamic posJ) => ((posI as int) - (posJ as int)).abs() != colDiff);
         }
       }
 

@@ -1,4 +1,5 @@
 /// Complete examples demonstrating multiple solutions functionality
+library;
 
 import 'package:dart_csp/dart_csp.dart';
 
@@ -260,8 +261,8 @@ Future<void> streamVsListGuidance() async {
   print('     - You might not need all solutions');
   print('     - Early termination conditions exist');
 
-  int processedCount = 0;
-  await for (final solution in p.getSolutions()) {
+  var processedCount = 0;
+  await for (final _ in p.getSolutions()) {
     processedCount++;
     // Example: stop after processing 10 solutions
     if (processedCount >= 10) {
@@ -279,7 +280,7 @@ Future<void> streamVsListGuidance() async {
   // Only get all solutions if the count is reasonable
   final totalCount = await p.countSolutions();
   if (totalCount <= 100) {
-    final allSolutions = await p.getAllSolutions();
+    await p.getAllSolutions();
     print('     Got all $totalCount solutions for analysis');
   } else {
     print('     Too many solutions ($totalCount) to collect in memory');
@@ -326,7 +327,7 @@ Future<void> completeWorkflowExample() async {
     final allSolutions = await p.getAllSolutions();
 
     print('   ✓ All scheduling options:');
-    for (int i = 0; i < allSolutions.length; i++) {
+    for (var i = 0; i < allSolutions.length; i++) {
       final solution = allSolutions[i];
       print(
           '     Option ${i + 1}: Math@${solution['Math']}, Science@${solution['Science']}, English@${solution['English']}');
@@ -338,15 +339,15 @@ Future<void> completeWorkflowExample() async {
       bestSolution['Math'],
       bestSolution['Science'],
       bestSolution['English']
-    ].reduce((a, b) => a > b ? a : b);
+    ].reduce((a, b) => (a as num) > (b as num) ? a : b);
 
     for (final solution in allSolutions) {
       final latestTime = [
         solution['Math'],
         solution['Science'],
         solution['English']
-      ].reduce((a, b) => a > b ? a : b);
-      if (latestTime < minLatestTime) {
+      ].reduce((a, b) => (a as num) > (b as num) ? a : b);
+      if ((latestTime as num) < (minLatestTime as num)) {
         minLatestTime = latestTime;
         bestSolution = solution;
       }

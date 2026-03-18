@@ -1,4 +1,5 @@
 /// Core CSP solver with backtracking, AC-3, and GAC algorithms.
+library;
 
 import 'dart:async';
 import 'dart:math'; // for randomization
@@ -31,7 +32,7 @@ class CSP {
 
     // 1. Generate an initial complete, random assignment.
     final current = <String, dynamic>{};
-    csp.variables.forEach((variable, domain) {
+    csp.variables.forEach((String variable, List<dynamic> domain) {
       current[variable] = domain[random.nextInt(domain.length)];
     });
 
@@ -40,7 +41,7 @@ class CSP {
     csp.naryIndex ??= _buildNaryIndex(csp.naryConstraints);
 
     // 2. Main search loop
-    for (int i = 0; i < maxSteps; i++) {
+    for (var i = 0; i < maxSteps; i++) {
       final conflictedVars =
           _getConflictedVariables(current, csp, binaryIndex, csp.naryIndex!);
 
@@ -54,7 +55,7 @@ class CSP {
 
       // 4. Find the value for the selected variable that minimizes conflicts.
       dynamic minConflictValue;
-      int minConflicts = 1 << 30; // Initialize with a large number
+      var minConflicts = 1 << 30; // Initialize with a large number
 
       // To break ties randomly, we collect all values with the same min score
       var bestValues = <dynamic>[];
@@ -131,7 +132,7 @@ class CSP {
       CspProblem csp,
       Map<String, List<BinaryConstraint>> binaryIndex,
       Map<String, List<NaryConstraint>> naryIndex) {
-    int conflicts = 0;
+    var conflicts = 0;
     final tempAssignment = Map<String, dynamic>.from(assignment);
     tempAssignment[variable] = value;
 
@@ -189,7 +190,7 @@ class CSP {
     // (e.g., {'A': 5}).
     if (result is Map<String, List<dynamic>>) {
       final unwrappedResult = <String, dynamic>{};
-      result.forEach((key, value) {
+      result.forEach((String key, List<dynamic> value) {
         unwrappedResult[key] = (value.isNotEmpty) ? value[0] : null;
       });
       return unwrappedResult;
@@ -216,7 +217,7 @@ class CSP {
     // Yield each solution from the stream after unwrapping the domain lists.
     await for (final solution in solutionStream) {
       final unwrappedResult = <String, dynamic>{};
-      solution.forEach((key, value) {
+      solution.forEach((String key, List<dynamic> value) {
         unwrappedResult[key] = (value.isNotEmpty) ? value[0] : null;
       });
       yield unwrappedResult;
@@ -280,7 +281,7 @@ class CSP {
       // Prepare the state for the recursive call.
       final newAssigned = <String, List<dynamic>>{};
       final newUnassigned = <String, List<dynamic>>{};
-      consistentMap.forEach((key, value) {
+      consistentMap.forEach((String key, List<dynamic> value) {
         if (currentAssignment.containsKey(key)) {
           newAssigned[key] = List<dynamic>.from(value);
         } else {
@@ -371,7 +372,7 @@ class CSP {
       // Prepare the state for the recursive call.
       final newAssigned = <String, List<dynamic>>{};
       final newUnassigned = <String, List<dynamic>>{};
-      consistentMap.forEach((key, value) {
+      consistentMap.forEach((String key, List<dynamic> value) {
         if (currentAssignment.containsKey(key)) {
           newAssigned[key] = List<dynamic>.from(value);
         } else {
@@ -459,17 +460,18 @@ class CSP {
   static bool _runAC3(Map<String, List<dynamic>> variables,
       List<BinaryConstraint> constraints) {
     // Initialize the queue with all arcs (constraints) in the problem.
-    List<BinaryConstraint> queue = List.from(constraints);
+    final queue = List<BinaryConstraint>.from(constraints);
 
     while (queue.isNotEmpty) {
       final constraint = queue.removeAt(0);
       final head = constraint.head;
       final tail = constraint.tail;
 
-      if (!variables.containsKey(head) || !variables.containsKey(tail))
+      if (!variables.containsKey(head) || !variables.containsKey(tail)) {
         continue;
+      }
 
-      bool removed = false;
+      var removed = false;
       final headDomain = variables[head]!;
       final tailDomain = variables[tail]!;
       final newTailDomain = <dynamic>[];
@@ -478,7 +480,7 @@ class CSP {
       for (final tailVal in tailDomain) {
         // A value `tailVal` has support if there's at least one value `headVal`
         // in the head's domain such that the predicate(headVal, tailVal) is true.
-        final bool hasSupport =
+        final hasSupport =
             headDomain.any((headVal) => constraint.predicate(headVal, tailVal));
 
         if (hasSupport) {
@@ -517,7 +519,7 @@ class CSP {
 
     while (queue.isNotEmpty) {
       final constraint = queue.removeAt(0);
-      bool changedAny = false;
+      var changedAny = false;
 
       // For each variable in the current constraint...
       for (final varName in constraint.vars) {
@@ -560,7 +562,8 @@ class CSP {
   /// combination of values for the other variables in the constraint `C` that
   /// satisfies `C.predicate`. This is itself a mini-CSP, solved here with a
   /// simple recursive DFS.
-  static bool _hasSupport(String focusVar, dynamic focusVal, NaryConstraint c,
+  static bool _hasSupport(
+      String focusVar, dynamic focusVal, NaryConstraint c,
       Map<String, List<dynamic>> variables) {
     // Gather the other variables involved in the constraint.
     final others = c.vars.where((v) => v != focusVar).toList();
@@ -609,7 +612,7 @@ class CSP {
   static String? _selectUnassignedVariable(
       Map<String, List<dynamic>> unassigned) {
     String? minKey;
-    int minLen = 1 << 30; // A large number, equivalent to infinity.
+    var minLen = 1 << 30; // A large number, equivalent to infinity.
     for (final entry in unassigned.entries) {
       final len = entry.value.length;
       if (len < minLen) {
@@ -672,7 +675,7 @@ class CSP {
   static Map<String, List<dynamic>> _cloneVars(
       Map<String, List<dynamic>> variables) {
     final out = <String, List<dynamic>>{};
-    variables.forEach((k, v) => out[k] = List<dynamic>.from(v));
+    variables.forEach((String k, List<dynamic> v) => out[k] = List<dynamic>.from(v));
     return out;
   }
 
